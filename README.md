@@ -20,6 +20,19 @@ We will begin in the UK to benchmark against OCF results and expand to other cou
 
 ---
 
+## Installation
+
+To use the `open-data-pvnet` library, you can install it via `pip`:
+
+### Basic Installation
+
+For most users:
+```bash
+pip install open-data-pvnet
+```
+
+---
+
 ## Volunteer Skills/Roles Needed
 
 We are looking for volunteers with the following skills:
