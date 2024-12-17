@@ -87,3 +87,6 @@ node_modules/
 
 # Git-specific files
 *.orig
+
+# Twine / PyPI
+.pypirc

@@ -18,6 +18,7 @@ Welcome to the Solar Forecasting project! This document will introduce you to th
 13. [Common Terminology](#common-terminology)
 14. [Helpful Knowledge and Skills](#helpful-knowledge-and-skills)
 15. [How This Project Fits into Renewable Energy](#how-this-project-fits-into-renewable-energy)
+16. [Development and Testing Guide](#development-and-testing-guide)
 
 ---
 
@@ -464,6 +465,40 @@ This project isn’t just about technology—it’s about building a community o
 - Inspire others to join the renewable energy movement!
 
 By contributing to this project, you’re not just writing code or analyzing data—you’re making a meaningful impact on the planet and helping pave the way to a sustainable future for many generations to come. 🌍✨
+---
+
+## Development and Testing Guide
+
+This guide outlines how to maintain code quality and test functionality using `ruff`, `black`, and `pytest`.
+
+### Code Quality Checks
+
+To ensure consistent coding style and catch common issues, use the following tools:
+
+1. **Ruff**: A fast Python linter.
+   - Run Ruff to check for linting errors:
+     ```bash
+     ruff check .
+     ```
+   - Automatically fix errors where possible:
+     ```bash
+     ruff check . --fix
+     ```
+
+2. **Black**: A Python code formatter.
+   - Format your code with Black:
+     ```bash
+     black .
+     ```
+
+### Running Tests
+
+Use `pytest` to ensure the project works as expected:
+
+1. Run all tests:
+   ```bash
+   pytest
+
 ---
 
 Thank you for joining us on this journey to advance solar forecasting and renewable energy solutions!
