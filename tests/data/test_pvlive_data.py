@@ -2,7 +2,8 @@ import pytest
 from unittest.mock import MagicMock
 from datetime import datetime
 import pytz
-from open_data_pvnet.scripts.fetch_pvlive_data import PVLiveData  
+from open_data_pvnet.scripts.fetch_pvlive_data import PVLiveData
+
 
 @pytest.fixture
 def pvlive_mock():
@@ -14,6 +15,7 @@ def pvlive_mock():
     pvlive.pvl.between = MagicMock()
     pvlive.pvl.at_time = MagicMock()
     return pvlive
+
 
 def test_get_latest_data(pvlive_mock):
     """
@@ -27,6 +29,7 @@ def test_get_latest_data(pvlive_mock):
         entity_type="gsp", entity_id=0, extra_fields="", period=30, dataframe=True
     )
     assert result == mock_data
+
 
 def test_get_data_between(pvlive_mock):
     """
@@ -43,6 +46,7 @@ def test_get_data_between(pvlive_mock):
         start=start, end=end, entity_type="gsp", entity_id=0, extra_fields="", dataframe=True
     )
     assert result == mock_data
+
 
 def test_get_data_at_time(pvlive_mock):
     """

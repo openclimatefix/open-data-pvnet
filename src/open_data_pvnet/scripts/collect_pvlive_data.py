@@ -17,14 +17,14 @@ end = datetime(2025, 1, 1, 1, 0, 0, 0, tzinfo=pytz.UTC)
 data = pv.get_data_between(start=start, end=end, extra_fields="capacity_mwp")
 df = pd.DataFrame(data)
 
-df['datetime_gmt'] = pd.to_datetime(df['datetime_gmt'], utc=True)
-df['datetime_gmt'] = df['datetime_gmt'].dt.tz_convert(None)
+df["datetime_gmt"] = pd.to_datetime(df["datetime_gmt"], utc=True)
+df["datetime_gmt"] = df["datetime_gmt"].dt.tz_convert(None)
 
 ds = xr.Dataset.from_dataframe(df)
 
-ds['datetime_gmt'] = ds['datetime_gmt'].astype(np.datetime64)
+ds["datetime_gmt"] = ds["datetime_gmt"].astype(np.datetime64)
 
-local_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'target_data.nc')
+local_path = os.path.join(os.path.dirname(__file__), "..", "data", "target_data.nc")
 
 os.makedirs(os.path.dirname(local_path), exist_ok=True)
 ds.to_netcdf(local_path)

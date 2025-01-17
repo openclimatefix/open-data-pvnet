@@ -1,10 +1,9 @@
-from datetime import datetime
 from pvlive_api import PVLive
 import logging
-import pytz
 
 
 logger = logging.getLogger(__name__)
+
 
 class PVLiveData:
     def __init__(self):
@@ -15,7 +14,13 @@ class PVLiveData:
         Get the latest data from PVlive
         """
         try:
-            df = self.pvl.latest(entity_type=entity_type, entity_id=entity_id, extra_fields=extra_fields, period=period, dataframe=True)
+            df = self.pvl.latest(
+                entity_type=entity_type,
+                entity_id=entity_id,
+                extra_fields=extra_fields,
+                period=period,
+                dataframe=True,
+            )
             return df
         except Exception as e:
             logger.error(e)
@@ -26,7 +31,14 @@ class PVLiveData:
         Get the data between two dates
         """
         try:
-            df = self.pvl.between(start=start, end=end, entity_type=entity_type, entity_id=entity_id, extra_fields=extra_fields, dataframe=True)
+            df = self.pvl.between(
+                start=start,
+                end=end,
+                entity_type=entity_type,
+                entity_id=entity_id,
+                extra_fields=extra_fields,
+                dataframe=True,
+            )
             return df
         except Exception as e:
             logger.error(e)
@@ -37,10 +49,10 @@ class PVLiveData:
         Get data at a specific time
         """
         try:
-            df = self.pvl.at_time(dt, entity_type="gsp", entity_id=0, extra_fields="", period=30, dataframe=True)
+            df = self.pvl.at_time(
+                dt, entity_type="gsp", entity_id=0, extra_fields="", period=30, dataframe=True
+            )
             return df
         except Exception as e:
             logger.error(e)
             return None
-
-
