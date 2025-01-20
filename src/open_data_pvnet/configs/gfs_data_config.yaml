@@ -1,0 +1,18 @@
+general:
+  name: "gfs_config"
+  description: "Configuration for GFS data sampling"
+
+input_data:
+  nwp:
+    gfs:
+      time_resolution_minutes: 60
+      interval_start_minutes: 0
+      interval_end_minutes: 360
+      dropout_timedeltas_minutes: null
+      accum_channels: []
+      max_staleness_minutes: 360
+      zarr_path: "s3://ocf-open-data-pvnet/data/gfs.zarr"
+      provider: "ecmwf"
+      image_size_pixels_height: 64
+      image_size_pixels_width: 64
+      channels: ['dlwrf', 'dswrf', 'hcc', 'lcc', 'mcc', 'prate', 'r', 'sde', 't', 'tcc', 'u10', 'u100', 'v10', 'v100', 'vis']
