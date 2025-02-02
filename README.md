@@ -49,7 +49,33 @@ Ready to dive in? Check out our [Getting Started Guide](getting_started.md) for 
 ---
 
 If you're passionate about **renewable energy, open-source collaboration, and sustainability**, please join us in advancing solar forecasting solutions for a better future! 🌍☀️✨
+---
+## Accessing GFS Data from S3
+The GFS data is stored in the S3 bucket `s3://ocf-open-data-pvnet/data/gfs/`. To access and work with this data, you can use Python libraries such as `xarray` and `s3fs`. These libraries allow you to directly read Zarr-formatted data from S3.
 
+### Prerequisites
+Before accessing the data, ensure you have the following Python packages installed:
+
+```bash
+pip install xarray zarr s3fs
+### Example Code
+
+Below is an example of how to open the GFS dataset from the S3 bucket using Python:
+
+```python
+import xarray as xr
+import s3fs
+
+# Create an S3 filesystem object
+s3 = s3fs.S3FileSystem(anon=True)
+
+# Open the GFS dataset from the S3 bucket
+dataset_path = 's3://ocf-open-data-pvnet/data/gfs/'
+ds = xr.open_zarr(s3.get_mapper(dataset_path), consolidated=True)
+
+# Display the dataset
+print(ds)
+---
 ## Contributing and community
 
 [![issues badge](https://img.shields.io/github/issues/openclimatefix/open-data-pvnet?color=FFAC5F)](https://github.com/openclimatefix/open-data-pvnet/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc)
