@@ -13,13 +13,15 @@ logger = logging.getLogger(__name__)
 def _validate_config(config):
     """Validate configuration and return required values."""
     repo_id = config.get("general", {}).get("destination_dataset_id")
+    provider = config.get("general", {}).get("provider")
     if not repo_id:
         raise ValueError("No destination_dataset_id found in the configuration file.")
-
-    local_output_dir = config["input_data"]["nwp"]["met_office"]["local_output_dir"]
+    if provider =="met_office":
+        local_output_dir = config["input_data"]["nwp"]["met_office"]["local_output_dir"]
+    elif provider == "pv_live":
+        local_output_dir = config["input_data"]["local_data"]
     zarr_base_path = Path(local_output_dir) / "zarr"
     return repo_id, zarr_base_path
-
 
 def _validate_token():
     """Validate Hugging Face token and return API instance."""
