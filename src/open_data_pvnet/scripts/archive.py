@@ -3,6 +3,7 @@ from typing import Optional
 from open_data_pvnet.nwp.met_office import process_met_office_data
 from open_data_pvnet.nwp.gfs import process_gfs_data
 from open_data_pvnet.nwp.dwd import process_dwd_data
+from open_data_pvnet.scripts.collect_pvlive_data import process_pvlive_data
 
 logger = logging.getLogger(__name__)
 
@@ -61,5 +62,11 @@ def handle_archive(
             f"Processing DWD data for {year}-{month:02d}-{day:02d} at hour {hour:02d} with overwrite={overwrite}"
         )
         process_dwd_data(year, month, day, hour, overwrite=overwrite)
+    elif provider == "pvlive":
+        logger.info(
+            f"Processing PVLive data for {year}-{month:02d}-{day:02d} with overwrite={overwrite}"
+        )
+        process_pvlive_data(year, month, day, hour, region, overwrite=overwrite, archive_type=archive_type)
+
     else:
         raise NotImplementedError(f"Provider {provider} not yet implemented")
