@@ -192,3 +192,76 @@ def test_main_metoffice_load_remote(mock_load_env, mock_handle_load):
             chunks="time:24,latitude:100",
             remote=True,
         )
+
+
+@patch("open_data_pvnet.main.archive_to_hf")
+@patch("open_data_pvnet.main.load_env_and_setup_logger")
+def test_main_metoffice_monthly_archive(mock_load_env, mock_archive_to_hf):
+    """Test monthly archive command (no day specified)"""
+    test_args = [
+        "metoffice",
+        "archive",
+        "--year",
+        "2024",
+        "--month",
+        "3",
+        "--region",
+        "uk",
+        "--overwrite",
+    ]
+    with patch("sys.argv", ["script"] + test_args):
+        main()
+        mock_archive_to_hf.assert_called_once_with(
+            provider="metoffice",
+            year=2024,
+            month=3,
+            day=None,
+            hour=None,
+            region="uk",
+            overwrite=True,
+            archive_type="zarr.zip",
+        )
+
+
+@patch("open_data_pvnet.main.handle_monthly_consolidation")
+@patch("open_data_pvnet.main.load_env_and_setup_logger")
+def test_main_metoffice_consolidate(mock_load_env, mock_consolidate):
+    """Test consolidation operation"""
+    test_args = [
+        "metoffice",
+        "consolidate",
+        "--year",
+        "2024",
+        "--month",
+        "3",
+        "--day",
+        "1",
+        "--region",
+        "uk",
+    ]
+    with patch("sys.argv", ["script"] + test_args):
+        main()
+        mock_consolidate.assert_called_once_with(
+            provider="metoffice",
+            year=2024,
+            month=3,
+            day=1,
+            region="uk",
+            overwrite=False,
+        )
+
+
+def test_main_invalid_provider():
+    """Test invalid provider"""
+    test_args = ["invalid_provider", "archive", "--year", "2024", "--month", "3"]
+    with patch("sys.argv", ["script"] + test_args):
+        with pytest.raises(SystemExit):
+            main()
+
+
+def test_main_invalid_operation():
+    """Test invalid operation"""
+    test_args = ["metoffice", "invalid_op", "--year", "2024", "--month", "3"]
+    with patch("sys.argv", ["script"] + test_args):
+        with pytest.raises(SystemExit):
+            main()

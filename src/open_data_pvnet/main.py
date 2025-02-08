@@ -7,13 +7,15 @@ from open_data_pvnet.utils.data_downloader import (
     merge_hours_to_day,
     process_month_by_days,
     merge_days_to_month,
+    get_zarr_groups,
 )
 from pathlib import Path
 import concurrent.futures
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from open_data_pvnet.utils.data_uploader import upload_monthly_zarr, upload_to_huggingface
 from open_data_pvnet.scripts.archive import handle_archive
 from open_data_pvnet.nwp.met_office import CONFIG_PATHS
+from open_data_pvnet.utils.data_sampler import prepare_nwp_dataset_for_ocf
 
 logger = logging.getLogger(__name__)
 
@@ -187,6 +189,20 @@ def configure_parser():
         # Consolidate operation parser
         consolidate_parser = operation_subparsers.add_parser("consolidate", help="Consolidate data")
         _add_common_arguments(consolidate_parser, provider)
+
+        # Add only the new sample operation to existing metoffice_subparsers
+        sample = operation_subparsers.add_parser("sample", help="Sample data for ML training")
+        sample.add_argument("--year", type=int, required=True, help="Year of data")
+        sample.add_argument("--month", type=int, required=True, help="Month of data")
+        sample.add_argument("--day", type=int, required=True, help="Day of data")
+        sample.add_argument(
+            "--region", choices=["uk", "global"], default="global", help="Region to process"
+        )
+        sample.add_argument("--chunks", type=str, help="Chunk sizes (e.g., 'time:24,latitude:100')")
+        sample.add_argument(
+            "--output", type=str, required=True, help="Output path for sampled data"
+        )
+        sample.add_argument("--remote", action="store_true", help="Use remote data source")
 
     return parser
 
@@ -370,6 +386,55 @@ def archive_to_hf(provider: str, year: int, month: int, day: int = None, **kwarg
         raise
 
 
+def handle_sample(
+    provider: str,
+    year: int,
+    month: int,
+    day: int,
+    region: str = "global",
+    chunks: Optional[str] = None,
+    output: str = None,
+    remote: bool = False,
+) -> None:
+    """
+    Handle the sample operation.
+
+    Args:
+        provider: Data provider (e.g., 'metoffice').
+        year: Year of data.
+        month: Month of data.
+        day: Day of data.
+        region: Region to process ('uk' or 'global').
+        chunks: Optional chunk sizes for dask.
+        output: Output path for sampled data.
+        remote: Whether to use remote data source.
+    """
+    logger.info(f"Loading data for {year}-{month:02d}-{day:02d}")
+
+    # Parse chunks if provided
+    chunk_dict = None
+    if chunks:
+        chunk_dict = dict(chunk.split(":") for chunk in chunks.split(","))
+
+    # Load the dataset
+    store, ds = load_zarr_data(year, month, day, chunks=chunk_dict, remote=remote)
+
+    try:
+        # Get Zarr groups and prepare dataset for OCF
+        zarr_groups = get_zarr_groups(store)
+        ds_ocf = prepare_nwp_dataset_for_ocf(ds, zarr_groups, store, chunk_dict)
+
+        # Save the prepared dataset
+        logger.info(f"Saving prepared dataset to {output}")
+        ds_ocf.to_netcdf(output)
+
+    finally:
+        # Clean up
+        store.close()
+
+    logger.info("Sampling operation completed successfully")
+
+
 def main():
     """Entry point for the Open Data PVNet CLI tool.
 
@@ -396,6 +461,9 @@ def main():
 
         # Consolidate specific day
         open-data-pvnet metoffice consolidate --year 2023 --month 12 --day 1
+
+        # Sample data for ML training
+        open-data-pvnet metoffice sample --year 2023 --month 12 --day 1 --region uk --chunks "time:24,latitude:100" --output /path/to/output
 
     GFS Data:
         Partially implemented
@@ -475,5 +543,16 @@ def main():
             "archive_type": getattr(args, "archive_type", "zarr.zip"),
         }
         archive_to_hf(**archive_kwargs)
+    elif args.operation == "sample":
+        handle_sample(
+            provider="metoffice",
+            year=args.year,
+            month=args.month,
+            day=args.day,
+            region=args.region,
+            chunks=args.chunks,
+            output=args.output,
+            remote=args.remote,
+        )
 
     return 0
