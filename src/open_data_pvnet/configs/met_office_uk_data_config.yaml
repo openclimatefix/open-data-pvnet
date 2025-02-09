@@ -1,5 +1,6 @@
 general:
   description: Config for accessing Met Office UK Deterministic NWP data
+  provider: "met_office"
   name: PVNet current (Met Office UK)
   destination_platform: "huggingface"
   destination_dataset_id: "openclimatefix/met-office-uk-deterministic-solar"
