@@ -5,12 +5,13 @@ general:
 input_data:
   nwp:
     gfs:
-      time_resolution_minutes: 180 # Match the dataset's resolution (3 hours)
+      time_resolution_minutes: 360 # Ensure matches dataset's 6-hour steps
       interval_start_minutes: 0
-      interval_end_minutes: 1080 # 6 forecast steps (6 * 3 hours)
-      dropout_timedeltas_minutes: null
+      interval_end_minutes: 1440 # Forecast for 1 day
+      # dropout_fraction: 0.1
+      dropout_timedeltas_minutes: null # Remove restrictions on dropout
       accum_channels: []
-      max_staleness_minutes: 1080 # Match interval_end_minutes for consistency
+      max_staleness_minutes: 180 # Extend staleness window (3 days)
       zarr_path: "s3://ocf-open-data-pvnet/data/gfs.zarr"
       provider: "gfs"
       image_size_pixels_height: 1
