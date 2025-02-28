@@ -1,4 +1,4 @@
-import tomli
+import tomllib
 import open_data_pvnet
 
 
@@ -8,7 +8,7 @@ def test_version_consistency():
     """
     # Read version from pyproject.toml
     with open("pyproject.toml", "rb") as f:
-        pyproject_data = tomli.load(f)
+        pyproject_data = tomllib.load(f)
     pyproject_version = pyproject_data["project"]["version"]
 
     # Read version from the __init__.py file
