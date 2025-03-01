@@ -1,0 +1,10 @@
+general:
+  description: Config for accessing PV-Live data
+  provider: "pv_live"
+  name: pvlive
+  destination_platform: "huggingface"
+  destination_dataset_id: "Ali-ws/ocf-pvlive"
+
+
+input_data:
+  local_data: "tmp/data/pvlive"
