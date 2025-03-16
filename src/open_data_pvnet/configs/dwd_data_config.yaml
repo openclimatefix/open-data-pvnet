@@ -1,0 +1,58 @@
+# Configuration for DWD (Deutscher Wetterdienst) ICON weather model data
+
+data_source:
+  base_url: "https://opendata.dwd.de/weather/nwp/icon"
+  model_name: "icon"
+  domain: "europe"  # Options: global, europe, d2
+  
+variables:
+  - name: "aswdifd_s"
+    grib_shortName: "aswd"
+    output_name: "diffuse_radiation"
+    description: "Diffuse downward short-wave radiation flux at surface"
+    unit: "W m-2"
+    conversion_factor: 1.0
+    
+  - name: "aswdir_s"
+    grib_shortName: "aswdir_s"
+    output_name: "direct_radiation"
+    description: "Direct downward short-wave radiation flux at surface"
+    unit: "W m-2"
+    conversion_factor: 1.0
+    
+  - name: "t_2m"
+    grib_shortName: "t_2m"
+    output_name: "temperature_2m"
+    description: "Temperature at 2m above ground"
+    unit: "K"
+    conversion_factor: 1.0
+    
+  - name: "clct"
+    grib_shortName: "clct"
+    output_name: "total_cloud_cover"
+    description: "Total cloud cover"
+    unit: "%"
+    conversion_factor: 0.01  # Convert from percentage to fraction
+    
+  - name: "wind_10m"
+    grib_shortName: "wind_10m"
+    output_name: "wind_speed_10m"
+    description: "Wind speed at 10m above ground"
+    unit: "m s-1"
+    conversion_factor: 1.0
+
+grid:
+  # Grid properties
+  resolution: 0.1  # Degrees
+  regrid_method: "bilinear"
+  
+# Default forecast parameters
+forecast:
+  default_horizon: 48  # Hours
+  run_hours: [0, 6, 12, 18]  # UTC hours when model runs are available
+  
+# Processing options
+processing:
+  cache_data: true
+  cache_dir: "cache"
+  interpolation_method: "linear"
