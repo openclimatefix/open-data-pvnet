@@ -32,8 +32,6 @@ def test_configure_parser():
             "12",
             "--region",
             "global",
-            "--archive-type",
-            "zarr.zip",
         ]
     )
     assert args.command == "metoffice"
@@ -43,7 +41,6 @@ def test_configure_parser():
     assert args.day == 1
     assert args.hour == 12
     assert args.region == "global"
-    assert args.archive_type == "zarr.zip"
     assert not args.overwrite
 
     # Test metoffice load command
@@ -74,7 +71,7 @@ def test_configure_parser():
     assert args.region == "uk"
     assert args.chunks == "time:24,latitude:100"
 
-    # Test gfs command with tar archive type
+    # Test gfs command
     args = parser.parse_args(
         [
             "gfs",
@@ -85,8 +82,6 @@ def test_configure_parser():
             "3",
             "--day",
             "1",
-            "--archive-type",
-            "tar",
         ]
     )
     assert args.command == "gfs"
@@ -94,7 +89,6 @@ def test_configure_parser():
     assert args.year == 2024
     assert args.month == 3
     assert args.day == 1
-    assert args.archive_type == "tar"
     assert not args.overwrite
 
 
@@ -144,7 +138,6 @@ def test_main_metoffice_load(mock_load_env, mock_handle_load):
             region="uk",
             overwrite=False,
             chunks="time:24,latitude:100",
-            remote=False,
         )
 
 
@@ -156,39 +149,3 @@ def test_main_list_providers(mock_load_env, mock_print):
     with patch("sys.argv", ["script"] + test_args):
         main()
         assert mock_print.call_count == 4  # One for header + three providers
-
-
-@patch("open_data_pvnet.main.handle_load")
-@patch("open_data_pvnet.main.load_env_and_setup_logger")
-def test_main_metoffice_load_remote(mock_load_env, mock_handle_load):
-    # Test metoffice load command with remote option
-    test_args = [
-        "metoffice",
-        "load",
-        "--year",
-        "2024",
-        "--month",
-        "3",
-        "--day",
-        "1",
-        "--hour",
-        "12",
-        "--region",
-        "uk",
-        "--chunks",
-        "time:24,latitude:100",
-        "--remote",  # Add remote flag
-    ]
-    with patch("sys.argv", ["script"] + test_args):
-        main()
-        mock_handle_load.assert_called_once_with(
-            provider="metoffice",
-            year=2024,
-            month=3,
-            day=1,
-            hour=12,
-            region="uk",
-            overwrite=False,
-            chunks="time:24,latitude:100",
-            remote=True,
-        )

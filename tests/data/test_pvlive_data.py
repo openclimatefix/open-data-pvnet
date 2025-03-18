@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from datetime import datetime
 import pytz
 from open_data_pvnet.scripts.fetch_pvlive_data import PVLiveData
@@ -10,11 +10,14 @@ def pvlive_mock():
     """
     Fixture to create a PVLiveData instance with mocked PVLive methods.
     """
-    pvlive = PVLiveData()
-    pvlive.pvl.latest = MagicMock()
-    pvlive.pvl.between = MagicMock()
-    pvlive.pvl.at_time = MagicMock()
-    return pvlive
+    with patch('open_data_pvnet.scripts.fetch_pvlive_data.PVLive') as mock_pvlive:
+        mock_instance = mock_pvlive.return_value
+        mock_instance.latest = MagicMock()
+        mock_instance.between = MagicMock()
+        mock_instance.at_time = MagicMock()
+        mock_instance._get_gsp_list = MagicMock(return_value=[])
+        pvlive = PVLiveData()
+        return pvlive
 
 
 def test_get_latest_data(pvlive_mock):
