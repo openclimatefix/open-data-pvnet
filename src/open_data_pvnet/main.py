@@ -14,7 +14,6 @@ from typing import List, Tuple
 from open_data_pvnet.utils.data_uploader import upload_monthly_zarr, upload_to_huggingface
 from open_data_pvnet.scripts.archive import handle_archive
 from open_data_pvnet.nwp.met_office import CONFIG_PATHS
-from open_data_pvnet.nwp.dwd import process_dwd_data
 
 logger = logging.getLogger(__name__)
 
@@ -65,20 +64,6 @@ def _add_common_arguments(parser, provider_name):
             choices=["global", "uk"],
             default="global",
             help="Specify the Met Office dataset region (default: global)",
-        )
-    # Add DWD specific arguments
-    elif provider_name == "dwd":
-        parser.add_argument(
-            "--hour",
-            type=int,
-            help="Hour of data (0-23). If not specified, process all hours of the day.",
-            default=None,
-        )
-        parser.add_argument(
-            "--region",
-            choices=["eu"],
-            default="eu",
-            help="Specify the DWD dataset region (default: eu)",
         )
 
     parser.add_argument(
@@ -159,7 +144,7 @@ def configure_parser():
     subparsers = parser.add_subparsers(dest="command", help="Data provider")
 
     # Add provider-specific parsers
-    for provider in ["metoffice", "gfs", "dwd"]:
+    for provider in ["metoffice", "gfs"]:
         provider_parser = subparsers.add_parser(
             provider, help=f"Commands for {provider.capitalize()} data"
         )
@@ -350,8 +335,9 @@ def handle_upload(provider: str, year: int, month: int, day: int = None, **kwarg
 
 
 def archive_to_hf(provider: str, year: int, month: int, day: int = None, **kwargs):
-    """Handle archiving data."""
+    """Handle archiving data to Hugging Face."""
     overwrite = kwargs.get("overwrite", False)
+    archive_type = kwargs.get("archive_type", "zarr.zip")
 
     try:
         if day is None:
@@ -384,6 +370,7 @@ def archive_to_hf(provider: str, year: int, month: int, day: int = None, **kwarg
                 hour=kwargs.get("hour"),
                 region=kwargs.get("region", "global"),
                 overwrite=overwrite,
+                archive_type=archive_type,
             )
 
     except Exception as e:
@@ -422,8 +409,7 @@ def main():
         Partially implemented
 
     DWD Data:
-        # Archive DWD data for a specific day
-        open-data-pvnet dwd archive --year 2023 --month 1 --day 1 --region eu
+        Not implemented yet
 
     Loading Data:
         # Load local data with default chunking
@@ -448,7 +434,7 @@ def main():
             if provider == "gfs":
                 print(f"- {provider} (partially implemented)")
             elif provider == "dwd":
-                print(f"- {provider}")
+                print(f"- {provider} (not implemented)")
             else:
                 print(f"- {provider}")
         return 0
@@ -499,7 +485,3 @@ def main():
         archive_to_hf(**archive_kwargs)
 
     return 0
-
-
-if __name__ == "__main__":
-    main()
