@@ -74,6 +74,15 @@ def test_get_latest_data(pvlive_data, mock_pvlive):
     assert result.equals(mock_data)
 
 
+def test_get_latest_data_error(pvlive_data, mock_pvlive):
+    """
+    Test error handling in get_latest_data method.
+    """
+    mock_pvlive.latest.side_effect = Exception("API Error")
+    result = pvlive_data.get_latest_data(period=30)
+    assert result is None
+
+
 def test_get_data_between(pvlive_data, mock_pvlive):
     """
     Test the get_data_between method.
@@ -97,6 +106,17 @@ def test_get_data_between(pvlive_data, mock_pvlive):
     assert result.equals(mock_data)
 
 
+def test_get_data_between_error(pvlive_data, mock_pvlive):
+    """
+    Test error handling in get_data_between method.
+    """
+    start = datetime(2021, 1, 1, 12, 0, tzinfo=pytz.utc)
+    end = datetime(2021, 1, 2, 12, 0, tzinfo=pytz.utc)
+    mock_pvlive.between.side_effect = Exception("API Error")
+    result = pvlive_data.get_data_between(start, end)
+    assert result is None
+
+
 def test_get_data_at_time(pvlive_data, mock_pvlive):
     """
     Test the get_data_at_time method.
@@ -114,3 +134,13 @@ def test_get_data_at_time(pvlive_data, mock_pvlive):
         dt, entity_type="gsp", entity_id=0, extra_fields="", period=30, dataframe=True
     )
     assert result.equals(mock_data)
+
+
+def test_get_data_at_time_error(pvlive_data, mock_pvlive):
+    """
+    Test error handling in get_data_at_time method.
+    """
+    dt = datetime(2021, 1, 1, 12, 0, tzinfo=pytz.utc)
+    mock_pvlive.at_time.side_effect = Exception("API Error")
+    result = pvlive_data.get_data_at_time(dt)
+    assert result is None
