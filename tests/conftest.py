@@ -37,35 +37,33 @@ def mock_requests():
 
 @pytest.fixture(scope="session", autouse=True)
 def mock_pvlive():
-    """Mock PVLive API methods to prevent actual API calls."""
-    # Create mock data as a DataFrame with all required columns
+    """Mock PVLive class and its methods to prevent actual API calls."""
     mock_data = pd.DataFrame({
         "generation_mw": [100, 200],
         "datetime_gmt": [
             datetime(2021, 1, 1, 12, 0, tzinfo=pytz.UTC),
             datetime(2021, 1, 1, 12, 30, tzinfo=pytz.UTC)
         ],
-        "pes_id": [0, 0],  # Added pes_id column
-        "gsp_id": [0, 0],  # Added gsp_id column
-        "gsp_name": ["National", "National"]  # Added gsp_name column
+        "pes_id": [0, 0],
+        "gsp_id": [0, 0],
+        "gsp_name": ["National", "National"]
     })
 
-    with patch('pvlive_api.pvlive.PVLive._fetch_url', autospec=True) as mock_fetch:
-        mock_fetch.return_value = {
-            "data": [{"gsp_id": 0, "gsp_name": "National", "pes_id": 0}],
-            "meta": ["gsp_id", "gsp_name", "pes_id"]
-        }
-        
-        # Mock the main PVLive methods
-        with patch('pvlive_api.pvlive.PVLive.latest') as mock_latest, \
-             patch('pvlive_api.pvlive.PVLive.between') as mock_between, \
-             patch('pvlive_api.pvlive.PVLive.at_time') as mock_at_time:
-            
-            mock_latest.return_value = mock_data
-            mock_between.return_value = mock_data
-            mock_at_time.return_value = mock_data
-            
-            yield
+    class MockPVLive:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def latest(self, *args, **kwargs):
+            return mock_data
+
+        def between(self, *args, **kwargs):
+            return mock_data
+
+        def at_time(self, *args, **kwargs):
+            return mock_data
+
+    with patch('pvlive_api.pvlive.PVLive', MockPVLive):
+        yield MockPVLive()
 
 
 def pytest_ignore_collect(path, config):
