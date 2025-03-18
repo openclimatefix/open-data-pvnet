@@ -1,4 +1,7 @@
-import tomllib
+try:
+    import tomllib
+except ImportError:
+    import tomli as tomllib
 import open_data_pvnet
 
 
