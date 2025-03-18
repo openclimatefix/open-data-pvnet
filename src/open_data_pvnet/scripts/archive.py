@@ -15,7 +15,6 @@ def handle_archive(
     hour: Optional[int] = None,
     region: str = "global",
     overwrite: bool = False,
-    archive_type: str = "zarr.zip",
 ):
     """
     Handle the archive operation for different providers.
@@ -25,10 +24,9 @@ def handle_archive(
         year (int): Year of data.
         month (int): Month of data.
         day (int): Day of data.
-        hour (Optional[int]): Hour of data (0-23), only used for Met Office data.
+        hour (Optional[int]): Hour of data (0-23).
         region (str): Region for Met Office data ('global' or 'uk').
         overwrite (bool): Whether to overwrite existing files.
-        archive_type (str): Type of archive to create ("zarr.zip" or "tar").
     """
     if provider == "metoffice":
         if region not in ["global", "uk"]:
@@ -48,18 +46,25 @@ def handle_archive(
                 hour=hour,
                 region=region,
                 overwrite=overwrite,
-                archive_type=archive_type,
             )
 
     elif provider == "gfs":
         logger.info(
-            f"Processing GFS data for {year}-{month:02d}-{day:02d} at hour {hour:02d} with overwrite={overwrite}"
+            f"Processing GFS data for {year}-{month:02d}-{day:02d} with overwrite={overwrite}"
         )
         process_gfs_data(year, month, day, hour, overwrite=overwrite)
     elif provider == "dwd":
-        logger.info(
-            f"Processing DWD data for {year}-{month:02d}-{day:02d} at hour {hour:02d} with overwrite={overwrite}"
-        )
-        process_dwd_data(year, month, day, hour, overwrite=overwrite)
+        hours = range(24) if hour is None else [hour]
+        for hour in hours:
+            logger.info(
+                f"Processing DWD data for {year}-{month:02d}-{day:02d} at hour {hour:02d} with overwrite={overwrite}"
+            )
+            process_dwd_data(
+                year=year,
+                month=month,
+                day=day,
+                hour=hour,
+                overwrite=overwrite,
+            )
     else:
         raise NotImplementedError(f"Provider {provider} not yet implemented")

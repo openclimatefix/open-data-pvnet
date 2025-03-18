@@ -11,14 +11,50 @@ logger = logging.getLogger(__name__)
 
 
 def _validate_config(config):
-    """Validate configuration and return required values."""
-    repo_id = config.get("general", {}).get("destination_dataset_id")
-    if not repo_id:
-        raise ValueError("No destination_dataset_id found in the configuration file.")
+    """
+    Validate the configuration and extract necessary paths.
 
-    local_output_dir = config["input_data"]["nwp"]["met_office"]["local_output_dir"]
-    zarr_base_path = Path(local_output_dir) / "zarr"
-    return repo_id, zarr_base_path
+    Args:
+        config (dict): Configuration dictionary
+
+    Returns:
+        tuple: (repo_id, zarr_base_path)
+
+    Raises:
+        ValueError: If required configuration fields are missing
+    """
+    # First validate required fields
+    if "general" not in config:
+        raise ValueError("No general configuration section found")
+    
+    if "destination_dataset_id" not in config["general"]:
+        raise ValueError("No destination_dataset_id found in general configuration")
+
+    if "input_data" not in config:
+        raise ValueError("No input_data configuration section found")
+
+    if "nwp" not in config["input_data"]:
+        raise ValueError("No nwp configuration section found")
+
+    # Get the dataset ID
+    repo_id = config["general"]["destination_dataset_id"]
+
+    # Check provider configuration
+    nwp_config = config["input_data"]["nwp"]
+    
+    # Check if it's a DWD config
+    if "dwd" in nwp_config:
+        local_output_dir = nwp_config["dwd"]["local_output_dir"]
+        zarr_base_path = Path(local_output_dir) / "zarr"
+        return repo_id, zarr_base_path
+
+    # Check if it's a Met Office config
+    if "met_office" in nwp_config:
+        local_output_dir = nwp_config["met_office"]["local_output_dir"]
+        zarr_base_path = Path(local_output_dir) / "zarr"
+        return repo_id, zarr_base_path
+
+    raise ValueError("Configuration must contain either 'dwd' or 'met_office' under input_data.nwp")
 
 
 def _validate_token():

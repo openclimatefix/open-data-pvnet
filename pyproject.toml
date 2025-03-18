@@ -43,6 +43,10 @@ dependencies = [
     "h5py",
     "pvlive-api",
     "pytest-mock",
+    "beautifulsoup4",
+    "cfgrib",
+    "eccodes",
+    "bz2file",
 ]
 
 [project.optional-dependencies]
