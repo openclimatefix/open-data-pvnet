@@ -1,11 +1,18 @@
 import logging
+import yaml
+import os
 from typing import Optional
 from open_data_pvnet.nwp.met_office import process_met_office_data
 from open_data_pvnet.nwp.gfs import process_gfs_data
-from open_data_pvnet.nwp.dwd import process_dwd_data
+from open_data_pvnet.nwp.dwd import fetch_and_process_dwd_data
 
 logger = logging.getLogger(__name__)
 
+def load_dwd_config():
+    """Load DWD configuration from YAML file."""
+    config_path = os.path.join(os.path.dirname(__file__), "..", "configs", "dwd_data_config.yaml")
+    with open(config_path, 'r') as f:
+        return yaml.safe_load(f)
 
 def handle_archive(
     provider: str,
@@ -54,17 +61,17 @@ def handle_archive(
         )
         process_gfs_data(year, month, day, hour, overwrite=overwrite)
     elif provider == "dwd":
-        hours = range(24) if hour is None else [hour]
-        for hour in hours:
-            logger.info(
-                f"Processing DWD data for {year}-{month:02d}-{day:02d} at hour {hour:02d} with overwrite={overwrite}"
-            )
-            process_dwd_data(
-                year=year,
-                month=month,
-                day=day,
-                hour=hour,
-                overwrite=overwrite,
-            )
+        if region != "eu":
+            raise ValueError("Only 'eu' region is currently supported")
+        
+        config = load_dwd_config()
+        fetch_and_process_dwd_data(
+            year=year,
+            month=month,
+            day=day,
+            hour=hour,
+            config=config,
+            overwrite=overwrite
+        )
     else:
         raise NotImplementedError(f"Provider {provider} not yet implemented")

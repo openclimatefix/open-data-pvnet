@@ -1,42 +1,34 @@
-general:
-  description: Config for accessing DWD (Deutscher Wetterdienst) ICON-EU NWP data
-  name: PVNet current (DWD)
-  destination_platform: "huggingface"
-  destination_dataset_id: "openclimatefix/dwd-icon-eu-deterministic-solar"  # Updated dataset ID
+name: dwd-icon-eu
+platform: huggingface
+dataset_name: pvnet/dwd-icon-eu
 
-input_data:
-  default_forecast_minutes: 480
-  default_history_minutes: 120
-  nwp:
-    dwd:
-      dropout_fraction: 1.0
-      dropout_timedeltas_minutes:
-      - -360
-      forecast_minutes: 480.0
-      history_minutes: 120
-      max_staleness_minutes: null
-      s3_bucket: "opendata.dwd.de"
-      s3_prefix: "weather/nwp/icon-eu/grib"
-      local_output_dir: "tmp/dwd"
-      nwp_accum_channels:
-      - ASWDIFD_S  # Diffuse downward shortwave radiation at surface
-      - ASWDIR_S   # Direct shortwave radiation at surface
-      - ATHB_S     # Net budget of radiation at surface
-      nwp_channels:
-      - T_2M       # 2m temperature
-      - ASWDIFD_S  # Diffuse downward shortwave radiation at surface
-      - ASWDIR_S   # Direct shortwave radiation at surface
-      - ATHB_S     # Net budget of radiation at surface
-      - CLCH       # High cloud cover
-      - CLCM       # Medium cloud cover
-      - CLCL       # Low cloud cover
-      - CLCT       # Total cloud cover
-      - H_SNOW     # Snow depth
-      - Z0         # Surface roughness length
-      - VMAX_10M   # Maximum wind speed at 10m
-      - DD_10M     # Wind direction at 10m
-      nwp_image_size_pixels_height: 1097  # ICON-EU grid dimensions
-      nwp_image_size_pixels_width: 657
-      nwp_provider: dwd
-      nwp_zarr_path: PLACEHOLDER.zarr
-      time_resolution_minutes: 60
+grid:
+  height: 561
+  width: 1097
+  latitude_bounds: [65.0, 30.0]  # [max, min] for descending order
+  longitude_bounds: [-23.5, 45.0]  # [min, max]
+
+variables:
+  - t_2m
+  - t_g
+  - aswdifd_s
+  - aswdir_s
+  - relhum_2m
+  - td_2m
+  - u_10m
+  - v_10m
+  - vmax_10m
+  - pmsl
+  - clct
+  - clcl
+  - clcm
+  - clch
+  - ww
+  - z0
+  - h_snow
+  - w_snow
+  - tot_prec
+  - runoff_g
+  - runoff_s
+  - cape_con
+  - alb_rad

@@ -11,7 +11,6 @@ from open_data_pvnet.utils.data_downloader import (
 from pathlib import Path
 import concurrent.futures
 from typing import List, Tuple
-from open_data_pvnet.utils.data_uploader import upload_monthly_zarr, upload_to_huggingface
 from open_data_pvnet.scripts.archive import handle_archive
 from open_data_pvnet.nwp.met_office import CONFIG_PATHS
 from open_data_pvnet.nwp.dwd import process_dwd_data
@@ -169,15 +168,9 @@ def configure_parser():
 
         # Archive operation parser
         archive_parser = operation_subparsers.add_parser(
-            "archive", help="Archive data to Hugging Face"
+            "archive", help="Archive data locally"
         )
         _add_common_arguments(archive_parser, provider)
-        archive_parser.add_argument(
-            "--archive-type",
-            choices=["zarr.zip", "tar"],
-            default="zarr.zip",
-            help="Type of archive to create (default: zarr.zip)",
-        )
         archive_parser.add_argument(
             "--workers",
             type=int,
@@ -193,15 +186,6 @@ def configure_parser():
             type=str,
             help="Chunking specification in format 'dim1:size1,dim2:size2' (e.g., 'time:24,latitude:100')",
         )
-        load_parser.add_argument(
-            "--remote",
-            action="store_true",
-            help="Load data lazily from HuggingFace without downloading",
-        )
-
-        # Consolidate operation parser
-        consolidate_parser = operation_subparsers.add_parser("consolidate", help="Consolidate data")
-        _add_common_arguments(consolidate_parser, provider)
 
     return parser
 
@@ -354,37 +338,16 @@ def archive_to_hf(provider: str, year: int, month: int, day: int = None, **kwarg
     overwrite = kwargs.get("overwrite", False)
 
     try:
-        if day is None:
-            # Archive monthly consolidated file
-            logger.info(f"Archiving monthly consolidated file for {year}-{month:02d}")
-            region = kwargs.get("region", "global")
-
-            if provider == "metoffice":
-                if region not in CONFIG_PATHS:
-                    raise ValueError(f"Invalid region '{region}'. Must be 'uk' or 'global'.")
-                config_path = CONFIG_PATHS[region]
-            else:
-                raise NotImplementedError(
-                    f"Monthly archive for provider {provider} not yet implemented"
-                )
-
-            upload_monthly_zarr(
-                config_path=config_path,
-                year=year,
-                month=month,
-                overwrite=overwrite,
-            )
-        else:
-            # Use provider-specific archive processing for daily data
-            handle_archive(
-                provider=provider,
-                year=year,
-                month=month,
-                day=day,
-                hour=kwargs.get("hour"),
-                region=kwargs.get("region", "global"),
-                overwrite=overwrite,
-            )
+        # Use provider-specific archive processing for daily data
+        handle_archive(
+            provider=provider,
+            year=year,
+            month=month,
+            day=day,
+            hour=kwargs.get("hour"),
+            region=kwargs.get("region", "global"),
+            overwrite=overwrite,
+        )
 
     except Exception as e:
         logger.error(f"Error in archive: {e}")
@@ -409,15 +372,6 @@ def main():
         # Archive as tar instead of zarr.zip
         open-data-pvnet metoffice archive --year 2023 --month 12 --day 1 --hour 12 --region uk -o --archive-type tar
 
-        # Archive monthly data, this requires a consolidation first
-        open-data-pvnet metoffice archive --year 2023 --month 12
-
-        # Consolidate monthly data
-        open-data-pvnet metoffice consolidate --year 2023 --month 12
-
-        # Consolidate specific day
-        open-data-pvnet metoffice consolidate --year 2023 --month 12 --day 1
-
     GFS Data:
         Partially implemented
 
@@ -428,9 +382,6 @@ def main():
     Loading Data:
         # Load local data with default chunking
         open-data-pvnet metoffice load --year 2023 --month 1 --day 16 --hour 0 --region uk
-
-        # Load remotely without downloading
-        open-data-pvnet metoffice load --year 2023 --month 1 --day 16 --hour 0 --region uk --remote
 
         # Load with custom chunking
         open-data-pvnet metoffice load --year 2023 --month 1 --day 16 --hour 0 --region uk --chunks "time:24,latitude:100,longitude:100"
@@ -472,19 +423,8 @@ def main():
             "region": args.region,
             "overwrite": args.overwrite,
             "chunks": args.chunks,
-            "remote": args.remote,
         }
         handle_load(**load_kwargs)
-    elif args.operation == "consolidate":
-        consolidate_kwargs = {
-            "provider": args.command,
-            "year": args.year,
-            "month": args.month,
-            "day": args.day,
-            "region": getattr(args, "region", None),
-            "overwrite": args.overwrite,
-        }
-        handle_monthly_consolidation(**consolidate_kwargs)
     elif args.operation == "archive":
         archive_kwargs = {
             "provider": args.command,
@@ -494,7 +434,6 @@ def main():
             "hour": getattr(args, "hour", None),
             "region": getattr(args, "region", None),
             "overwrite": args.overwrite,
-            "archive_type": getattr(args, "archive_type", "zarr.zip"),
         }
         archive_to_hf(**archive_kwargs)
 
