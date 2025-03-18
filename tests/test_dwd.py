@@ -97,42 +97,56 @@ def test_process_dwd_data_success(mocker, mock_config, tmp_path):
     mocker.patch("open_data_pvnet.nwp.dwd.PROJECT_BASE", str(tmp_path))
     mocker.patch("open_data_pvnet.nwp.dwd.CONFIG_PATH", "test_config.yaml")
     mocker.patch("open_data_pvnet.nwp.dwd.load_config", return_value=mock_config)
-    mock_fetch = mocker.patch("open_data_pvnet.nwp.dwd.fetch_dwd_data", return_value=3)
 
     # Mock xarray operations
     mock_ds = mocker.MagicMock()
-    mock_ds.data_vars = ["t2m"]
+    mock_ds.data_vars = {"t2m": mocker.MagicMock()}
     mock_ds.rename.return_value = mock_ds
+    mock_ds.coords = {}
+    mock_ds.sizes = {"latitude": 561, "longitude": 1097}
+    mock_ds.sel.return_value = mock_ds
+
+    # Mock coordinates
+    mock_longitude = mocker.MagicMock()
+    mock_longitude.max.return_value = 45.0
+    mock_ds.longitude = mock_longitude
+
+    mock_latitude = mocker.MagicMock()
+    mock_ds.latitude = mock_latitude
 
     mock_open_dataset = mocker.patch("xarray.open_dataset", return_value=mock_ds)
-    mock_merge = mocker.patch("xarray.merge")
-    mock_merged = mocker.MagicMock()
-    mock_merged.to_zarr = mocker.MagicMock()
-    mock_merge.return_value = mock_merged
 
-    # Mock file operations
-    mocker.patch("pathlib.Path.exists", return_value=False)
-    mocker.patch("pathlib.Path.mkdir")
-    mocker.patch("pathlib.Path.glob", return_value=[
-        Path("T_2M_file.grib2"),
-        Path("CLCT_file.grib2"),
-        Path("ASWDIR_S_file.grib2")
-    ])
+    # Create test file path and config
+    test_file = tmp_path / "test.grib2"
+    test_config = {
+        "grid": {
+            "height": 561,
+            "width": 1097,
+            "latitude_bounds": [65.0, 30.0],
+            "longitude_bounds": [-23.5, 45.0]
+        }
+    }
 
     # Call function
-    process_dwd_data(2023, 1, 1, 0)
+    result = process_dwd_data(str(test_file), test_config)
 
     # Assertions
-    mock_fetch.assert_called_once()
-    mock_merged.to_zarr.assert_called_once()
+    assert result is not None
+    mock_open_dataset.assert_called_once()
+    mock_ds.sel.assert_called_once()
 
 
 def test_process_dwd_data_no_files(mocker, mock_config):
     """Test processing when no files are downloaded."""
-    mocker.patch("open_data_pvnet.nwp.dwd.load_config", return_value=mock_config)
-    mock_fetch = mocker.patch("open_data_pvnet.nwp.dwd.fetch_dwd_data", return_value=0)
+    # Create test config
+    test_config = {
+        "grid": {
+            "height": 561,
+            "width": 1097,
+            "latitude_bounds": [65.0, 30.0],
+            "longitude_bounds": [-23.5, 45.0]
+        }
+    }
 
-    process_dwd_data(2023, 1, 1, 0)
-
-    mock_fetch.assert_called_once_with(2023, 1, 1, 0)
-    # Should exit early if no files are downloaded 
+    with pytest.raises(FileNotFoundError):
+        process_dwd_data("nonexistent_file.grib2", test_config) 
