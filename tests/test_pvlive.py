@@ -32,7 +32,8 @@ def mock_requests():
             "data": [
                 {"gsp_id": 0, "gsp_name": "National"},
                 {"gsp_id": 1, "gsp_name": "Region 1"}
-            ]
+            ],
+            "meta": ["gsp_id", "gsp_name"]
         })
         yield mock_get
 
@@ -43,7 +44,10 @@ def pvlive_data():
     Fixture to create a PVLiveData instance with mocked PVLive methods.
     """
     with patch('pvlive_api.pvlive.PVLive._fetch_url', autospec=True) as mock_fetch:
-        mock_fetch.return_value = {"data": [{"gsp_id": 0, "gsp_name": "National"}]}
+        mock_fetch.return_value = {
+            "data": [{"gsp_id": 0, "gsp_name": "National"}],
+            "meta": ["gsp_id", "gsp_name"]
+        }
         instance = PVLiveData()
         # Mock the methods after initialization
         instance.pvl.latest = MagicMock()
@@ -56,7 +60,10 @@ def test_get_latest_data(pvlive_data):
     """
     Test the get_latest_data method.
     """
-    mock_data = {"column1": [1, 2], "column2": [3, 4]}
+    mock_data = {
+        "data": [{"generation_mw": 100, "datetime_gmt": "2021-01-01T12:00:00Z"}],
+        "meta": ["generation_mw", "datetime_gmt"]
+    }
     pvlive_data.pvl.latest.return_value = mock_data
 
     result = pvlive_data.get_latest_data(period=30)
@@ -80,7 +87,13 @@ def test_get_data_between(pvlive_data):
     """
     Test the get_data_between method.
     """
-    mock_data = {"column1": [5, 6], "column2": [7, 8]}
+    mock_data = {
+        "data": [
+            {"generation_mw": 100, "datetime_gmt": "2021-01-01T12:00:00Z"},
+            {"generation_mw": 200, "datetime_gmt": "2021-01-01T12:30:00Z"}
+        ],
+        "meta": ["generation_mw", "datetime_gmt"]
+    }
     pvlive_data.pvl.between.return_value = mock_data
 
     start = datetime(2021, 1, 1, 12, 0, tzinfo=pytz.utc)
@@ -110,7 +123,10 @@ def test_get_data_at_time(pvlive_data):
     """
     Test the get_data_at_time method.
     """
-    mock_data = {"column1": [9, 10], "column2": [11, 12]}
+    mock_data = {
+        "data": [{"generation_mw": 100, "datetime_gmt": "2021-01-01T12:00:00Z"}],
+        "meta": ["generation_mw", "datetime_gmt"]
+    }
     pvlive_data.pvl.at_time.return_value = mock_data
 
     dt = datetime(2021, 1, 1, 12, 0, tzinfo=pytz.utc)
