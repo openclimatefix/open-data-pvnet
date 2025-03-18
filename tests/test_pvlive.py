@@ -84,8 +84,8 @@ def test_get_latest_data_error(pvlive_data):
     """
     pvlive_data.pvl.latest.side_effect = PVLiveException("Test error")
     
-    with pytest.raises(PVLiveException, match="Test error"):
-        pvlive_data.get_latest_data(period=30)
+    result = pvlive_data.get_latest_data(period=30)
+    assert result is None
 
 
 def test_get_data_between(pvlive_data):
@@ -121,11 +121,11 @@ def test_get_data_between_error(pvlive_data):
     """
     pvlive_data.pvl.between.side_effect = PVLiveException("Test error")
     
-    start = datetime(2021, 1, 1, 12, 0, tzinfo=pytz.utc)
-    end = datetime(2021, 1, 2, 12, 0, tzinfo=pytz.utc)
-    
-    with pytest.raises(PVLiveException, match="Test error"):
-        pvlive_data.get_data_between(start, end)
+    result = pvlive_data.get_data_between(
+        start=datetime(2021, 1, 1, 12, 0, tzinfo=pytz.utc),
+        end=datetime(2021, 1, 2, 12, 0, tzinfo=pytz.utc)
+    )
+    assert result is None
 
 
 def test_get_data_at_time(pvlive_data):
@@ -157,7 +157,7 @@ def test_get_data_at_time_error(pvlive_data):
     """
     pvlive_data.pvl.at_time.side_effect = PVLiveException("Test error")
     
-    dt = datetime(2021, 1, 1, 12, 0, tzinfo=pytz.utc)
-    
-    with pytest.raises(PVLiveException, match="Test error"):
-        pvlive_data.get_data_at_time(dt) 
+    result = pvlive_data.get_data_at_time(
+        datetime(2021, 1, 1, 12, 0, tzinfo=pytz.utc)
+    )
+    assert result is None 
