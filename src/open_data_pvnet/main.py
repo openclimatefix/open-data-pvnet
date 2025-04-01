@@ -15,6 +15,7 @@ from open_data_pvnet.utils.data_uploader import upload_monthly_zarr, upload_to_h
 from open_data_pvnet.scripts.archive import handle_archive
 from open_data_pvnet.nwp.met_office import CONFIG_PATHS
 from open_data_pvnet.nwp.dwd import process_dwd_data
+from open_data_pvnet.nwp.gfs import process_gfs_data
 
 logger = logging.getLogger(__name__)
 
@@ -202,6 +203,24 @@ def configure_parser():
         # Consolidate operation parser
         consolidate_parser = operation_subparsers.add_parser("consolidate", help="Consolidate data")
         _add_common_arguments(consolidate_parser, provider)
+
+    # Add GFS parser
+    gfs_parser = subparsers.add_parser("gfs", help="Commands for GFS data")
+    operation_subparsers = gfs_parser.add_subparsers(dest="operation", help="Operation to perform")
+
+    # Archive operation parser for GFS
+    archive_parser = operation_subparsers.add_parser("archive", help="Archive GFS data")
+    archive_parser.add_argument("--year", type=int, required=True, help="Year to process")
+    archive_parser.add_argument("--month", type=int, help="Month to process")
+    archive_parser.add_argument("--day", type=int, help="Day to process")
+    archive_parser.add_argument("--skip-upload", action="store_true", help="Skip uploading to HuggingFace")
+    archive_parser.add_argument("--overwrite", "-o", action="store_true", help="Overwrite existing files")
+    archive_parser.add_argument(
+        "--archive-type",
+        choices=["zarr.zip", "tar"],
+        default="zarr.zip",
+        help="Type of archive to create"
+    )
 
     return parser
 
@@ -419,7 +438,8 @@ def main():
         open-data-pvnet metoffice consolidate --year 2023 --month 12 --day 1
 
     GFS Data:
-        Partially implemented
+        # Archive GFS data for a specific day
+        open-data-pvnet gfs archive --year 2023 --month 1 --day 1 --skip-upload
 
     DWD Data:
         # Archive DWD data for a specific day
@@ -496,7 +516,17 @@ def main():
             "overwrite": args.overwrite,
             "archive_type": getattr(args, "archive_type", "zarr.zip"),
         }
-        archive_to_hf(**archive_kwargs)
+        if args.command == "gfs":
+            process_gfs_data(
+                year=args.year,
+                month=args.month,
+                day=args.day,
+                skip_upload=args.skip_upload,
+                overwrite=args.overwrite,
+                archive_type=args.archive_type
+            )
+        else:
+            archive_to_hf(**archive_kwargs)
 
     return 0
 

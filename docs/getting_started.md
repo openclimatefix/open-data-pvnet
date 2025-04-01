@@ -646,6 +646,18 @@ open-data-pvnet metoffice load --year 2023 --month 12 --day 1 --region uk
 open-data-pvnet metoffice load --year 2023 --month 1 --day 16 --region uk --remote
 ```
 
+#### GFS Data Processing
+```bash
+# Process and archive GFS data for a specific year
+open-data-pvnet gfs archive --year 2023
+
+# Process specific month with upload to HuggingFace
+open-data-pvnet gfs archive --year 2023 --month 12 --overwrite
+
+# Process without uploading to HuggingFace
+open-data-pvnet gfs archive --year 2023 --skip-upload
+```
+
 ### Error Handling
 Common error messages and their solutions:
 - "No datasets found": Check if the specified date has available data
