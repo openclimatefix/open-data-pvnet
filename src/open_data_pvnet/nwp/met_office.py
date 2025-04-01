@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 # Define the configuration paths for UK and Global
 CONFIG_PATHS = {
-    "uk": PROJECT_BASE / "src/open_data_pvnet/configs/pvlive_data_config.yaml",
+    "uk": PROJECT_BASE / "src/open_data_pvnet/configs/met_office_uk_data_config.yaml",
     "global": PROJECT_BASE / "src/open_data_pvnet/configs/met_office_global_data_config.yaml",
 }
 

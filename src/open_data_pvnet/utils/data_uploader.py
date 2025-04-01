@@ -92,7 +92,7 @@ def _upload_archive(
     overwrite: bool,
     year: int,
     month: int,
-    day: int,
+    day: int = None,
 ):
     """
     Upload an archive file to the Hugging Face repository in the data/year/month/day structure.
@@ -105,10 +105,14 @@ def _upload_archive(
         overwrite (bool): Whether to overwrite existing files.
         year (int): Year for folder structure.
         month (int): Month for folder structure.
-        day (int): Day for folder structure.
+        day (int, optional): Day for folder structure. If not provided, only year/month will be used.
     """
     # Create the path structure: data/year/month/day/archive_name
-    target_path = f"data/{year:04d}/{month:02d}/{day:02d}/{archive_path.name}"
+    if day is not None:
+        target_path = f"data/{year:04d}/{month:02d}/{day:02d}/{archive_path.name}"
+    else:
+        target_path = f"data/{year:04d}/{month:02d}/{archive_path.name}"
+    
     logger.info(f"Uploading archive {archive_path} to {repo_id}:{target_path}")
 
     try:
@@ -198,7 +202,7 @@ def upload_to_huggingface(
     folder_name: str,
     year: int,
     month: int,
-    day: int,
+    day: int = None,
     overwrite: bool = False,
     archive_type: str = "zarr.zip",
 ):
@@ -210,7 +214,7 @@ def upload_to_huggingface(
         folder_name (str): Name of the folder to upload (e.g., '2022-12-01-00').
         year (int): Year for folder structure.
         month (int): Month for folder structure.
-        day (int): Day for folder structure.
+        day (int, optional): Day for folder structure. If not provided, only year/month will be used.
         overwrite (bool): Whether to overwrite existing files in the repository.
         archive_type (str): Type of archive to create ("zarr.zip" or "tar").
 
@@ -240,7 +244,10 @@ def upload_to_huggingface(
             archive_path = create_tar_archive(folder_path, archive_name, overwrite=overwrite)
 
         # Upload archive with year/month/day structure
-        _upload_archive(hf_api, archive_path, repo_id, hf_token, overwrite, year, month, day)
+        if day is not None:
+            _upload_archive(hf_api, archive_path, repo_id, hf_token, overwrite, year, month, day)
+        else:
+            _upload_archive(hf_api, archive_path, repo_id, hf_token, overwrite, year, month)
 
         logger.info(f"Upload to Hugging Face completed: {repo_id}")
 
