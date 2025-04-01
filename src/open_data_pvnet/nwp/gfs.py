@@ -36,19 +36,21 @@ def process_gfs_data(
         gfs['longitude'] = ((gfs['longitude'] + 360) % 360)
         gfs = gfs.sel(
             latitude=slice(65, 45),
-            longitude=slice(0, 360)
+            longitude=slice(350, 362)  # UK region in [0, 360) range
         )
 
         # Stack variables into channel dimension
         gfs = gfs.to_array(dim="channel")
 
         # Optimize chunking
-        gfs = gfs.chunk({
-            'init_time_utc': len(gfs.init_time_utc),
-            'step': 10,
+        chunk_sizes = {
+            'init_time_utc': 1,
+            'step': 4,
+            'channel': -1,  # Keep all channels together
             'latitude': 1,
             'longitude': 1
-        })
+        }
+        gfs = gfs.chunk(chunk_sizes)
 
         # Save locally
         output_dir = Path(f"data/gfs/uk/gfs_uk_{year}.zarr")
@@ -87,7 +89,9 @@ def verify_gfs_data(zarr_path: str) -> bool:
         ds = xr.open_zarr(zarr_path)
         
         # Verify dimensions
-        assert "channel" in ds.dims, "Missing 'channel' dimension"
+        required_dims = {"init_time_utc", "latitude", "longitude", "channel"}
+        if not all(dim in ds.dims for dim in required_dims):
+            raise ValueError(f"Dataset missing required dimensions: {required_dims}")
         
         # Verify longitude range
         assert 0 <= ds.longitude.min() < ds.longitude.max() <= 360, \
