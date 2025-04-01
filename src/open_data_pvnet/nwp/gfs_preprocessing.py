@@ -24,8 +24,6 @@ def preprocess_gfs_data(input_path: str, output_path: str, year: int) -> None:
     gfs = gfs.sortby('longitude')  # Ensure longitudes are sorted
     
     # Step 2: Select UK region (with buffer)
-    # UK bounds: ~50°N to 60°N, 10°W to 2°E
-    # Convert negative longitudes to [0, 360) range: -10° -> 350°, 2° -> 2°
     gfs = gfs.sel(
         latitude=slice(65, 45),  # Include buffer around UK
         longitude=slice(350, 362)  # Wrap around 360° (350° to 2°)
@@ -61,9 +59,6 @@ def preprocess_gfs_data(input_path: str, output_path: str, year: int) -> None:
     
     logger.info(f"Completed processing for {year}")
     logger.info(f"Final dimensions: {gfs.dims}")
-    logger.info(f"Coordinate ranges: \n" +
-                f"Latitude: {gfs.latitude.min().values:.2f} to {gfs.latitude.max().values:.2f}\n" +
-                f"Longitude: {gfs.longitude.min().values:.2f} to {gfs.longitude.max().values:.2f}")
 
 def main():
     input_base = "/mnt/storage_b/nwp/gfs/global"
