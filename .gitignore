@@ -1,0 +1,96 @@
+# Byte-compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+env/
+venv/
+.venv/
+
+# Ruff cache directory
+.ruff_cache/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Log files
+*.log
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+*.env
+
+# Compiled code
+*.so
+*.out
+*.o
+
+# Database files
+*.sqlite3
+*.db
+
+# Packaging files
+*.egg
+*.egg-info/
+dist/
+build/
+*.wheel
+
+# IDE files
+.vscode/
+.idea/
+
+# Test coverage
+.coverage
+*.cover
+*.cov
+htmlcov/
+
+# Logs and reports
+*.log
+*.pid
+*.gz
+
+# Backup files
+*.bak
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.temp
+*.~*
+/tmp/
+
+# Cloud-specific files
+*.aws/
+*.azure/
+.terraform/
+*.tfstate
+*.tfstate.*
+
+# Python cache
+*.cache/
+
+# Node.js (if applicable)
+node_modules/
+
+# Miscellaneous
+*.crt
+*.pem
+*.key
+
+# Git-specific files
+*.orig
+
+# Twine / PyPI
+.pypirc
+
+# Data
+data/

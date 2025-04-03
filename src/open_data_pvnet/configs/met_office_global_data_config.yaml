@@ -1,0 +1,50 @@
+general:
+  description: Config for training the saved PVNet model using Met Office data
+  name: PVNet current (Met Office)
+  destination_platform: "huggingface"
+  destination_dataset_id: null # TODO: Add destination dataset id
+
+input_data:
+  default_forecast_minutes: 480
+  default_history_minutes: 120
+  gsp:
+    dropout_fraction: 0
+    dropout_timedeltas_minutes: null
+    forecast_minutes: 480
+    gsp_zarr_path: PLACEHOLDER.zarr
+    history_minutes: 120
+    time_resolution_minutes: 30
+  nwp:
+    met_office:
+      dropout_fraction: 1.0
+      dropout_timedeltas_minutes:
+      - -360
+      forecast_minutes: 480.0
+      history_minutes: 120
+      max_staleness_minutes: null
+      s3_bucket: "met-office-atmospheric-model-data"
+      s3_prefix: "global-deterministic-10km"
+      local_output_dir: "tmp/met_office/global"
+      nwp_accum_channels:
+      - radiation_flux_in_shortwave_total_downward_at_surface # Downward shortwave radiation flux at the surface (W/m²)
+      - radiation_flux_in_longwave_downward_at_surface        # Downward longwave radiation flux at the surface (W/m²)
+      - surface_roughness                                    # Surface roughness (m) (if available, otherwise null or computed)
+      - radiation_flux_in_uv_downward_at_surface             # Downward UV radiation flux at the surface (W/m²)
+      nwp_channels:
+      - temperature_at_screen_level                          # 2-meter temperature (°C)
+      - radiation_flux_in_shortwave_total_downward_at_surface # Downward shortwave radiation flux at the surface (W/m²)
+      - radiation_flux_in_longwave_downward_at_surface        # Downward longwave radiation flux at the surface (W/m²)
+      - cloud_amount_of_high_cloud                           # High cloud cover (fraction or %)
+      - cloud_amount_of_medium_cloud                         # Medium cloud cover (fraction or %)
+      - cloud_amount_of_low_cloud                            # Low cloud cover (fraction or %)
+      - cloud_amount_of_total_cloud                          # Total cloud cover (fraction or %)
+      - snow_depth_water_equivalent                          # Snow depth equivalent water content (mm)
+      - surface_roughness                                    # Surface roughness (m) (if available, otherwise null or computed)
+      - radiation_flux_in_uv_downward_at_surface             # Downward UV radiation flux at the surface (W/m²)
+      - wind_speed_at_10m                                    # 10-meter wind speed (m/s)
+      - wind_direction_at_10m                                # 10-meter wind direction (degrees from north)
+      nwp_image_size_pixels_height: 12
+      nwp_image_size_pixels_width: 12
+      nwp_provider: met_office
+      nwp_zarr_path: PLACEHOLDER.zarr
+      time_resolution_minutes: 60

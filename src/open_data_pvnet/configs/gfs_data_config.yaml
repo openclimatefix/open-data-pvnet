@@ -1,0 +1,34 @@
+general:
+  name: "gfs_config"
+  description: "Configuration for GFS data sampling"
+
+input_data:
+  nwp:
+    gfs:
+      time_resolution_minutes: 180 # Match the dataset's resolution (3 hours)
+      interval_start_minutes: 0
+      interval_end_minutes: 1080 # 6 forecast steps (6 * 3 hours)
+      dropout_timedeltas_minutes: null
+      accum_channels: []
+      max_staleness_minutes: 1080 # Match interval_end_minutes for consistency
+      zarr_path: "s3://ocf-open-data-pvnet/data/gfs.zarr"
+      provider: "gfs"
+      image_size_pixels_height: 1
+      image_size_pixels_width: 1
+      channels:
+        [
+          "dlwrf",
+          "dswrf",
+          "hcc",
+          "lcc",
+          "mcc",
+          "prate",
+          "r",
+          "t",
+          "tcc",
+          "u10",
+          "u100",
+          "v10",
+          "v100",
+          "vis",
+        ]

@@ -1,0 +1,71 @@
+{
+  "files": [
+    "README.md"
+  ],
+  "imageSize": 100,
+  "commit": false,
+  "commitType": "docs",
+  "commitConvention": "angular",
+  "contributors": [
+    {
+      "login": "peterdudfield",
+      "name": "Peter Dudfield",
+      "avatar_url": "https://avatars.githubusercontent.com/u/34686298?v=4",
+      "profile": "https://github.com/peterdudfield",
+      "contributions": [
+        "projectManagement"
+      ]
+    },
+    {
+      "login": "Sukh-P",
+      "name": "Sukhil Patel",
+      "avatar_url": "https://avatars.githubusercontent.com/u/42407101?v=4",
+      "profile": "https://github.com/Sukh-P",
+      "contributions": [
+        "projectManagement"
+      ]
+    },
+    {
+      "login": "jcamier",
+      "name": "Jack Camier",
+      "avatar_url": "https://avatars.githubusercontent.com/u/14153557?v=4",
+      "profile": "https://github.com/jcamier",
+      "contributions": [
+        "ideas"
+      ]
+    },
+    {
+      "login": "alirashidAR",
+      "name": "Ali Rashid",
+      "avatar_url": "https://avatars.githubusercontent.com/u/110668489?v=4",
+      "profile": "https://github.com/alirashidAR",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "arzoo0511",
+      "name": "arzoo0511",
+      "avatar_url": "https://avatars.githubusercontent.com/u/148741922?v=4",
+      "profile": "https://github.com/arzoo0511",
+      "contributions": [
+        "doc"
+      ]
+    },
+    {
+      "login": "MAYANK12SHARMA",
+      "name": "MAYANK SHARMA",
+      "avatar_url": "https://avatars.githubusercontent.com/u/145884197?v=4",
+      "profile": "https://github.com/MAYANK12SHARMA",
+      "contributions": [
+        "infra"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7,
+  "skipCi": true,
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "projectName": "open-data-pvnet",
+  "projectOwner": "openclimatefix"
+}
