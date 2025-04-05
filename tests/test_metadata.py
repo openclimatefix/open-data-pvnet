@@ -1,5 +1,5 @@
 import tomllib
-import open_data_pvnet
+import src.open_data_pvnet
 
 
 def test_version_consistency():
@@ -12,7 +12,7 @@ def test_version_consistency():
     pyproject_version = pyproject_data["project"]["version"]
 
     # Read version from the __init__.py file
-    init_version = open_data_pvnet.__version__
+    init_version = src.open_data_pvnet.__version__
 
     # Assert both versions are the same
     assert pyproject_version == init_version, (

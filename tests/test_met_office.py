@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import Mock
 
-from open_data_pvnet.nwp.met_office import (
+from src.open_data_pvnet.nwp.met_office import (
     generate_prefix,
     fetch_met_office_data,
     process_met_office_data,

@@ -9,10 +9,10 @@ import yaml
 import pandas as pd
 from huggingface_hub.utils import EntryNotFoundError
 
-from open_data_pvnet.utils.config_loader import load_config
-from open_data_pvnet.utils.env_loader import load_environment_variables
-from open_data_pvnet.utils.data_converters import convert_nc_to_zarr
-from open_data_pvnet.utils.data_uploader import (
+from src.open_data_pvnet.utils.config_loader import load_config
+from src.open_data_pvnet.utils.env_loader import load_environment_variables
+from src.open_data_pvnet.utils.data_converters import convert_nc_to_zarr
+from src.open_data_pvnet.utils.data_uploader import (
     _validate_config,
     _validate_token,
     _ensure_repository,
@@ -21,7 +21,7 @@ from open_data_pvnet.utils.data_uploader import (
     _upload_archive,
     upload_to_huggingface,
 )
-from open_data_pvnet.utils.data_downloader import load_zarr_data, restructure_dataset
+from src.open_data_pvnet.utils.data_downloader import load_zarr_data, restructure_dataset
 
 
 # Fixtures

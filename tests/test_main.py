@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch
-from open_data_pvnet.main import (
+from src.open_data_pvnet.main import (
     configure_parser,
     load_env_and_setup_logger,
     main,

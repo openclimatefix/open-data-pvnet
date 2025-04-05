@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import Mock
 from pathlib import Path
 
-from open_data_pvnet.nwp.dwd import (
+from src.open_data_pvnet.nwp.dwd import (
     generate_variable_url,
     fetch_dwd_data,
     process_dwd_data,
