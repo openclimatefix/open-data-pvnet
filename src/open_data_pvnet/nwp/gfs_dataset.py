@@ -11,10 +11,9 @@ import xarray as xr
 from torch.utils.data import Dataset
 from ocf_data_sampler.config import load_yaml_configuration
 from ocf_data_sampler.torch_datasets.utils.valid_time_periods import find_valid_time_periods
-from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS
 import fsspec
 import numpy as np
-
+from open_data_pvnet.nwp.constants import NWP_MEANS, NWP_STDS
 
 # Configure logging
 logging.basicConfig(level=logging.WARNING)
@@ -23,31 +22,69 @@ logging.basicConfig(level=logging.WARNING)
 xr.set_options(keep_attrs=True)
 
 
-def open_gfs(dataset_path: str) -> xr.DataArray:
+def preprocess_gfs_data(gfs: xr.Dataset) -> xr.Dataset:
     """
-    Opens the GFS dataset stored in Zarr format and prepares it for processing.
+    Preprocess GFS dataset to ensure correct coordinates and dimensions.
 
     Args:
-        dataset_path (str): Path to the GFS dataset.
+        gfs (xr.Dataset): Raw GFS dataset
 
     Returns:
-        xr.DataArray: The processed GFS data.
+        xr.Dataset: Preprocessed dataset with correct coordinates and dimensions
     """
-    logging.info("Opening GFS dataset synchronously...")
-    store = fsspec.get_mapper(dataset_path, anon=True)
-    gfs_dataset: xr.Dataset = xr.open_dataset(
-        store, engine="zarr", consolidated=True, chunks="auto"
+    # 1. Ensure longitude is in [0, 360) range
+    gfs["longitude"] = (gfs["longitude"] + 360) % 360
+
+    # 2. Select UK region (longitude 350-10, latitude 45-65)
+    gfs = gfs.sel(latitude=slice(65, 45))  # North to South
+
+    # 3. Handle the longitude wrap-around for UK
+    gfs1 = gfs.sel(longitude=slice(350, 360))  # Western part
+    gfs2 = gfs.sel(longitude=slice(0, 10))  # Eastern part
+    gfs = xr.concat([gfs1, gfs2], dim="longitude")
+
+    # 4. Convert to DataArray with channel dimension
+    if isinstance(gfs, xr.Dataset):
+        gfs = gfs.to_array(dim="channel")
+
+    # 5. Optimize chunking for performance
+    gfs = gfs.chunk(
+        {
+            "init_time_utc": -1,  # Keep full time dimension
+            "step": 4,  # Chunk forecast steps
+            "channel": -1,  # Keep all channels together
+            "latitude": 1,  # Small chunks for spatial dimensions
+            "longitude": 1,
+        }
     )
-    gfs_data: xr.DataArray = gfs_dataset.to_array(dim="channel")
 
-    if "init_time" in gfs_data.dims:
-        logging.debug("Renaming 'init_time' to 'init_time_utc'...")
-        gfs_data = gfs_data.rename({"init_time": "init_time_utc"})
+    return gfs
 
-    required_dims = ["init_time_utc", "step", "channel", "latitude", "longitude"]
-    gfs_data = gfs_data.transpose(*required_dims)
 
-    logging.debug(f"GFS dataset dimensions: {gfs_data.dims}")
+def open_gfs(dataset_path: str) -> xr.DataArray:
+    """
+    Opens and preprocesses the GFS dataset.
+
+    Args:
+        dataset_path (str): Path to the GFS dataset
+
+    Returns:
+        xr.DataArray: Processed GFS data with correct dimensions
+    """
+    logging.info("Opening GFS dataset...")
+    store = fsspec.get_mapper(dataset_path, anon=True)
+    gfs_dataset = xr.open_dataset(store, engine="zarr", consolidated=True)
+
+    # Apply preprocessing
+    gfs_data = preprocess_gfs_data(gfs_dataset)
+
+    # Ensure required dimensions are present
+    expected_dims = ["init_time_utc", "step", "channel", "latitude", "longitude"]
+    if not all(dim in gfs_data.dims for dim in expected_dims):
+        raise ValueError(
+            f"Missing required dimensions. Expected {expected_dims}, got {list(gfs_data.dims)}"
+        )
+
     return gfs_data
 
 
