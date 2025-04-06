@@ -1,8 +1,12 @@
 import pytest
 from unittest.mock import Mock
 from pathlib import Path
+import sys
+import pathlib
 
-from src.open_data_pvnet.nwp.dwd import (
+src_dir = pathlib.Path(__file__).parent.parent / 'src'
+sys.path.insert(0, str(src_dir))
+from open_data_pvnet.nwp.dwd import (
     generate_variable_url,
     fetch_dwd_data,
     process_dwd_data,
