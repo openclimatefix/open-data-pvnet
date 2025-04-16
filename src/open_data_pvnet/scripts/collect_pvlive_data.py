@@ -49,18 +49,6 @@ ds = xr.Dataset.from_dataframe(df)
 # Rearrange dimensions so that the time dimension comes first
 ds = ds.transpose("time_utc", "gsp_id")
 
-# Saving the data to a local path
-local_path = os.path.join(os.path.dirname(__file__), "..", "data", "gsp.zarr")
-
-# Create the directories if they do not already exist
-os.makedirs(os.path.dirname(local_path), exist_ok=True)
-
-# Save the dataset as a Zarr file to the local path
-ds.to_zarr(local_path, consolidated=True, mode="w")
-
-logger.info(f"Zarr dataset successfully stored at: {local_path}")
-
-
 # ---- Upload to S3 ----
 
 # S3 bucket path - replace with your actual S3 bucket path
