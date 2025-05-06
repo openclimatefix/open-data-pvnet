@@ -1,5 +1,11 @@
 import pytest
 from unittest.mock import patch
+import sys
+import pathlib
+
+src_dir = pathlib.Path(__file__).parent.parent / 'src'
+sys.path.insert(0, str(src_dir))
+
 from open_data_pvnet.main import (
     configure_parser,
     load_env_and_setup_logger,
