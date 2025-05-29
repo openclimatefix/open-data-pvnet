@@ -8,7 +8,11 @@ import xarray as xr
 import yaml
 import pandas as pd
 from huggingface_hub.utils import EntryNotFoundError
+import sys
+import pathlib
 
+src_dir = pathlib.Path(__file__).parent.parent / 'src'
+sys.path.insert(0, str(src_dir))
 from open_data_pvnet.utils.config_loader import load_config
 from open_data_pvnet.utils.env_loader import load_environment_variables
 from open_data_pvnet.utils.data_converters import convert_nc_to_zarr
