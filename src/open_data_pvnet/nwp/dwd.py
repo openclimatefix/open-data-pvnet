@@ -16,19 +16,21 @@ logger = logging.getLogger(__name__)
 
 CONFIG_PATH = PROJECT_BASE / "src/open_data_pvnet/configs/dwd_data_config.yaml"
 
+
 class DWDHTMLParser(HTMLParser):
     def __init__(self):
         super().__init__()
         self.links = []
 
     def handle_starttag(self, tag, attrs):
-        if tag == 'a':
+        if tag == "a":
             for attr in attrs:
-                if attr[0] == 'href':
+                if attr[0] == "href":
                     self.links.append(attr[1])
 
     def error(self, message):
         pass  # Override to prevent errors from being raised
+
 
 def generate_variable_url(variable: str, year: int, month: int, day: int, hour: int) -> str:
     """
@@ -48,6 +50,7 @@ def generate_variable_url(variable: str, year: int, month: int, day: int, hour: 
     timestamp = f"{year:04d}{month:02d}{day:02d}{hour:02d}"
     return f"{base_url}/{hour:02d}/{variable.lower()}/icon-eu_europe_regular-lat-lon_single-level_{timestamp}_*"
 
+
 def decompress_bz2(input_path: Path, output_path: Path):
     """
     Decompress a bz2 file.
@@ -56,8 +59,9 @@ def decompress_bz2(input_path: Path, output_path: Path):
         input_path (Path): Path to the bz2 file
         output_path (Path): Path to save the decompressed file
     """
-    with bz2.open(input_path, 'rb') as source, open(output_path, 'wb') as dest:
+    with bz2.open(input_path, "rb") as source, open(output_path, "wb") as dest:
         dest.write(source.read())
+
 
 def fetch_dwd_data(year: int, month: int, day: int, hour: int):
     """
@@ -108,10 +112,10 @@ def fetch_dwd_data(year: int, month: int, day: int, hour: int):
             logger.debug(f"HTML content: {response.text}")
             links = parser.links
             logger.debug(f"Extracted links: {links}")
-            
+
             timestamp = f"{year:04d}{month:02d}{day:02d}{hour:02d}"
             target_prefix = f"icon-eu_europe_regular-lat-lon_single-level_{timestamp}"
-            
+
             found_file = False
             for href in links:
                 if not href or not href.startswith(target_prefix):
@@ -125,7 +129,7 @@ def fetch_dwd_data(year: int, month: int, day: int, hour: int):
                 file_response = requests.get(file_url, stream=True)
                 file_response.raise_for_status()
 
-                with open(compressed_file, 'wb') as f:
+                with open(compressed_file, "wb") as f:
                     for chunk in file_response.iter_content(chunk_size=8192):
                         f.write(chunk)
 
@@ -145,6 +149,49 @@ def fetch_dwd_data(year: int, month: int, day: int, hour: int):
 
     return total_files
 
+
+def convert_grib_to_zarr(raw_dir: Path, zarr_dir: Path) -> xr.Dataset:
+    """Convert GRIB2 files to Zarr format."""
+    datasets = []
+    for grib_file in raw_dir.glob("*.grib2"):
+        try:
+            ds = xr.open_dataset(grib_file, engine="cfgrib")
+            variable_name = grib_file.stem.split("_")[0]
+            main_var = list(ds.data_vars)[0]
+            ds = ds.rename({main_var: variable_name})
+            datasets.append(ds)
+        except Exception as e:
+            logger.error(f"Error reading {grib_file}: {e}")
+            continue
+
+    if not datasets:
+        return None
+
+    return xr.merge(datasets)
+
+
+def handle_upload(
+    zarr_dir: Path,
+    raw_dir: Path,
+    config_path: Path,
+    year: int,
+    month: int,
+    day: int,
+    overwrite: bool,
+    archive_type: str,
+) -> None:
+    """Handle uploading data to Hugging Face."""
+    try:
+        upload_to_huggingface(config_path, zarr_dir.name, year, month, day, overwrite, archive_type)
+        logger.info("Upload to Hugging Face completed.")
+        shutil.rmtree(raw_dir)
+        shutil.rmtree(zarr_dir)
+        logger.info("Temporary directories cleaned up.")
+    except Exception as e:
+        logger.error(f"Error during upload: {e}")
+        raise
+
+
 def process_dwd_data(
     year: int,
     month: int,
@@ -152,20 +199,9 @@ def process_dwd_data(
     hour: int,
     overwrite: bool = False,
     archive_type: str = "zarr.zip",
-    skip_upload: bool = True,  # Skip upload by default until HF token is set
+    skip_upload: bool = True,
 ):
-    """
-    Fetch, convert, and upload DWD ICON-EU data.
-
-    Args:
-        year (int): Year of data
-        month (int): Month of data
-        day (int): Day of data
-        hour (int): Hour of data
-        overwrite (bool): Whether to overwrite existing files. Defaults to False.
-        archive_type (str): Type of archive to create ("zarr.zip" or "tar")
-        skip_upload (bool): Whether to skip uploading to Hugging Face. Defaults to True.
-    """
+    """Fetch, convert, and upload DWD ICON-EU data."""
     config = load_config(CONFIG_PATH)
     local_output_dir = config["input_data"]["nwp"]["dwd"]["local_output_dir"]
 
@@ -186,43 +222,18 @@ def process_dwd_data(
     # Step 2: Convert GRIB2 files to Zarr
     if not zarr_dir.exists() or overwrite:
         zarr_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Load all GRIB2 files and combine them
-        datasets = []
-        for grib_file in raw_dir.glob("*.grib2"):
-            try:
-                ds = xr.open_dataset(grib_file, engine='cfgrib')
-                variable_name = grib_file.stem.split("_")[0]  # Get variable name from our filename
-                # Rename the main variable to match the filename
-                main_var = list(ds.data_vars)[0]
-                ds = ds.rename({main_var: variable_name})
-                datasets.append(ds)
-            except Exception as e:
-                logger.error(f"Error reading {grib_file}: {e}")
-                continue
+        combined_ds = convert_grib_to_zarr(raw_dir, zarr_dir)
 
-        if not datasets:
+        if combined_ds is None:
             logger.warning("No valid GRIB2 files found. Exiting process.")
             return
 
-        # Merge all datasets
-        combined_ds = xr.merge(datasets)
-        
-        # Save to zarr format
         logger.info(f"Saving combined dataset to {zarr_dir}")
-        combined_ds.to_zarr(zarr_dir, mode='w')
+        combined_ds.to_zarr(zarr_dir, mode="w")
 
     # Step 3: Upload Zarr directory (optional)
     if not skip_upload:
-        try:
-            upload_to_huggingface(CONFIG_PATH, zarr_dir.name, year, month, day, overwrite, archive_type)
-            logger.info("Upload to Hugging Face completed.")
-            shutil.rmtree(raw_dir)
-            shutil.rmtree(zarr_dir)
-            logger.info("Temporary directories cleaned up.")
-        except Exception as e:
-            logger.error(f"Error during upload: {e}")
-            raise
+        handle_upload(zarr_dir, raw_dir, CONFIG_PATH, year, month, day, overwrite, archive_type)
     else:
         logger.info("Skipping upload to Hugging Face (skip_upload=True)")
         logger.info(f"Data is available in {zarr_dir}")
