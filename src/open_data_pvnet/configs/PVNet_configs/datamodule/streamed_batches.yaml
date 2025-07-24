@@ -1,0 +1,20 @@
+_target_: pvnet.data.DataModule
+# Path to the data configuration yaml file. You can find examples in the configuration subdirectory
+# in configs.example/datamodule/configuration
+# Use the full local path such as: /FULL/PATH/PVNet/configs/datamodule/configuration/gcp_configuration.yaml"
+
+configuration: "/home/gsoc-siddharth/projects/PVNet/configs/datamodule/configuration/example_configuration.yaml"
+num_workers: 8
+prefetch_factor: 2
+batch_size: 8
+
+sample_output_dir: "GFS_samples"
+num_train_samples: 1000
+num_val_samples: 1000
+
+train_period:
+  - null
+  - "2023-06-30"
+val_period:
+  - "2023-07-01"
+  - "2023-12-31"
