@@ -94,3 +94,8 @@ node_modules/
 
 # Data
 data/
+
+# Temporary data files
+*.nc
+*.zarr.zip
+

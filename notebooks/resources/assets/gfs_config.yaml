@@ -1,0 +1,90 @@
+general:
+  description: Configuration for GFS data sampling
+  name: gfs_config
+input_data:
+  gsp:
+    zarr_path: s3://ocf-open-data-pvnet/data/uk/pvlive/v1/target_data_2023_01.zarr
+    interval_start_minutes: -60
+    interval_end_minutes: 480
+    time_resolution_minutes: 30
+    dropout_timedeltas_minutes: []
+    dropout_fraction: 0.0
+  nwp:
+    gfs:
+      zarr_path: s3://ocf-open-data-pvnet/data/gfs/v4/2023.zarr
+      time_resolution_minutes: 180
+      interval_start_minutes: -180
+      interval_end_minutes: 540
+      dropout_timedeltas_minutes: []
+      dropout_fraction: 0.0
+      image_size_pixels_height: 10
+      image_size_pixels_width: 10
+      public: true
+      provider: gfs
+      channels:
+      - dlwrf
+      - dswrf
+      - hcc
+      - mcc
+      - lcc
+      - prate
+      - r
+      - t
+      - tcc
+      - u10
+      - u100
+      - v10
+      - v100
+      - vis
+      normalisation_constants:
+        dlwrf:
+          mean: 298.342
+          std: 96.305916
+        dswrf:
+          mean: 168.12321
+          std: 246.18533
+        hcc:
+          mean: 35.272
+          std: 42.525383
+        lcc:
+          mean: 43.578342
+          std: 44.3732
+        mcc:
+          mean: 33.738823
+          std: 43.150745
+        prate:
+          mean: 2.8190969e-05
+          std: 0.00010159573
+        r:
+          mean: 18.359747
+          std: 25.440672
+        sde:
+          mean: 0.36937004
+          std: 0.43345627
+        t:
+          mean: 278.5223
+          std: 22.825893
+        tcc:
+          mean: 66.841606
+          std: 41.030598
+        u10:
+          mean: -0.0022310058
+          std: 5.470838
+        u100:
+          mean: 0.0823025
+          std: 6.8899174
+        v10:
+          mean: 0.06219831
+          std: 4.7401133
+        v100:
+          mean: 0.0797807
+          std: 6.076132
+        vis:
+          mean: 19628.32
+          std: 8294.022
+        u:
+          mean: 11.645444
+          std: 10.614556
+        v:
+          mean: 0.12330122
+          std: 7.176398

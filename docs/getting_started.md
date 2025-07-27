@@ -112,6 +112,8 @@ This project applies core machine learning (ML) principles to the domain of sola
 
 For contributors unfamiliar with these concepts, the [Machine Learning Terms](#machine-learning-terms) section provides a glossary of key terms to get started.
 
+Tutorial: Getting Started with ML Training: [OCF Open Data PVNet Notebook](../notebooks/gfs_sample.ipynb)
+
 ---
 
 ## Datasets for Solar Forecasting
@@ -124,6 +126,9 @@ A NWP dataset used for UK solar forecasting. See [Met Office Dataset Documentati
 - Dataset structure and format
 - Data quality considerations
 - Access instructions via Hugging Face
+
+### NWP Attributes for Solar Forecasting
+When working with any NWP dataset for solar forecasting, certain atmospheric variables are particularly important for accurate predictions. The [NWP Solar Attributes Reference](nwp_solar_attributes.md) provides a comprehensive list of the key CF Standard Names and attributes that should be prioritized when available in NWP models. This includes core variables like solar radiation fluxes, cloud cover at different levels, temperature, and wind, as well as additional variables like aerosol optical depth and surface albedo that can enhance forecast accuracy in specific conditions. While not all NWP models will contain every variable listed, this reference helps ensure consistency and guides data collection efforts across different weather data sources.
 
 ### Other Weather Datasets
 For a complete list of available weather datasets and their descriptions, see the [Datasets Guide](datasets.md).
@@ -230,22 +235,64 @@ By effectively leveraging APIs like PVlive and weather services, contributors ca
 ---
 
 ## Data Pipelines for Solar Forecasting
-Explore how pipelines prepare and batch data for machine learning models, making training and testing efficient.
+
+Data pipelines are crucial for preparing and processing data for machine learning models. In the context of solar forecasting, these pipelines handle multiple data sources and transform them into a format suitable for training and inference.
+
+### OCF Data Pipeline Components
+
+1. **OCF Data Sampler**
+   - A Python library that standardizes data loading and preprocessing
+   - Handles both NWP (Numerical Weather Prediction) and PV generation data
+   - Provides PyTorch Dataset implementations for efficient batch processing
+   - Supports various data formats including Zarr, NetCDF, and CSV
+
+2. **PVNet Integration**
+   - Works with OCF's PVNet model for solar forecasting
+   - Processes multiple input streams:
+     - Weather forecast data (NWP)
+     - Historical PV generation data
+     - Satellite imagery (when available)
+   - Handles data normalization and feature engineering
+
+### Key Pipeline Features
+
+1. **Data Loading**
+   - Efficient loading of large NWP datasets using Zarr format
+   - Real-time PV generation data retrieval via PVLive API
+   - Support for multiple weather data sources (Met Office, GFS, etc.)
+
+2. **Preprocessing Steps**
+   - Temporal alignment of different data sources
+   - Spatial interpolation for matching grid resolutions
+   - Feature normalization and standardization
+   - Missing data handling and quality checks
+
+3. **Batch Creation**
+   - Creation of training/validation/test splits
+   - Time-series specific considerations
+   - Efficient memory management for large datasets
+   - Support for both regional and national-level forecasting
+
+### Example Pipeline Usage Refer to:
+- [OCF Data Sampler Documentation](https://github.com/openclimatefix/ocf-data-sampler)
+- [PVNet Model Repository](https://github.com/openclimatefix/PVNet)
+- [GFS Sample Notebook](../notebooks/gfs_sample.ipynb)
 
 ---
 
 ## Benchmarks and Comparisons
-Understand the importance of benchmarking and how our models compare to existing solutions.
+Understand the importance of benchmarking and how our models compare to existing solutions. These are still in development...
 
 ---
 
 ## Geographical Adaptability
-This project won't be limited to the UK eventually. Learn how it can be adapted to other regions and data sources.
+This project won't be limited to the UK eventually. We hope to support other regions and data sources in the future. Your help is welcome!
 
 ---
 
 ## Key Tools and Technologies
-Familiarize yourself with tools like Python, pandas, and open-source libraries like `ocf-datasample`.
+Familiarize yourself with tools like Python, pandas, and open-source libraries like - [OCF Data Sampler](https://github.com/openclimatefix/ocf-data-sampler)
+- [PVNet Model](https://github.com/openclimatefix/PVNet)
 
 ---
 
@@ -270,7 +317,15 @@ Below is a glossary of key terms that might be useful when working on this proje
 ### Weather Forecasting and Numerical Weather Prediction (NWP) Terms
 - **Numerical Weather Prediction (NWP)**: The use of mathematical models to simulate atmospheric processes and predict future weather conditions.
 - **Gridded Data**: Data arranged in a regular, grid-like structure, where each cell or grid point represents a specific geographical area and contains corresponding data values (e.g., temperature, solar irradiance, or wind speed).
-- **Global Forecast System (GFS)**: A global NWP model produced by the National Weather Service that provides weather forecasts up to 16 days in advance.
+- **Global Forecast System (GFS)**: A global NWP model produced by the National Centers for Environmental Prediction (NCEP), a part of the National Oceanic and Atmospheric Administration (NOAA). It provides weather forecasts up to 16 days in advance.
+  - [GFS Documentation](https://www.ncei.noaa.gov/products/weather-climate-models/global-forecast)
+  - Tutorial:  [Understanding GFS Data](../notebooks/understanding_gfs_data.ipynb)
+- **UK Met Office UKV Model**: A high-resolution (2km grid spacing) weather forecast model specifically designed for the UK region. The UKV (UK Variable) model uses a variable-resolution grid that allows it to represent UK weather patterns in greater detail than global models. It provides forecasts up to 54 hours ahead with hourly outputs, making it particularly valuable for solar forecasting in the UK.
+  - Key features include detailed cloud physics, advanced data assimilation, and specific tuning for UK weather patterns
+  - Variables include cloud cover (at multiple levels), solar radiation, temperature, and wind
+  - Uses Lambert Azimuthal Equal Area projection centered on the UK
+  - [Met Office Site](https://www.metoffice.gov.uk/)
+  - Tutorial: [Understanding Met Office data](../notebooks/understanding_metoffice_data.ipynb)
 - **European Centre for Medium-Range Weather Forecasts (ECMWF)**: An independent intergovernmental organization that produces highly accurate medium-range weather forecasts.
 - **Model Resolution**: The spatial and temporal granularity of an NWP model, usually measured in kilometers or degrees.
 - **Initialization**: The process of incorporating current observational data into a model to start a forecast.
@@ -287,6 +342,7 @@ Below is a glossary of key terms that might be useful when working on this proje
 
 - **Geostationary**: A satellite orbit where the satellite remains fixed relative to a specific point on Earth's surface, providing continuous observation of the same region. Commonly used in weather monitoring and solar radiation measurement.
 - **Geospatial Data**: Information about objects, events, or phenomena on Earth's surface, represented by geographic coordinates and often used in mapping and analysis.
+- **Lambert Azimuthal Equal Area projection**: A map projection that preserves area while minimizing distortion. It's particularly useful for mapping polar regions and is commonly used in meteorological applications, especially for regional weather forecasting. The projection maintains accurate representation of areas while sacrificing some angular relationships.
 - **Latitude**: The angular distance of a location north or south of the equator, measured in degrees. Important for determining solar angles and irradiance.
 - **Longitude**: The angular distance of a location east or west of the prime meridian, measured in degrees. Used in conjunction with latitude to pinpoint geographic locations.
 - **Spatial Resolution**: The level of detail in a geospatial dataset, often defined by the size of the grid cells or pixels representing the data. Higher resolution provides more detail but requires more storage and processing power.
@@ -366,13 +422,25 @@ For more details, refer to the [WMO Cloud Identification Guide](https://cloudatl
 - **NetCDF (Network Common Data Form)**: A self-describing, machine-independent data format designed for storing and sharing array-oriented scientific data. Commonly used in meteorology, oceanography, and other geosciences, NetCDF supports large datasets and includes metadata for describing the data's structure and meaning.
 - **HDF5 (Hierarchical Data Format version 5)**: A versatile data model that supports the storage of large, complex datasets in a hierarchical structure. HDF5 is widely used for scientific computing, offering high performance, scalability, and the ability to handle large amounts of data efficiently.
 - **GRIB (GRIdded Binary)**: A concise data format commonly used in meteorology to store historical and forecast weather data. GRIB files are optimized for large datasets, representing grid-based information such as temperature, wind speed, and precipitation. They are often used by Numerical Weather Prediction (NWP) models and are known for their efficient storage and compression.
-- **Power Units**:
-  - **Watt (W)**: The basic unit of power in the International System of Units (SI), representing one joule per second.
-  - **Kilowatt (kW)**: Equal to 1,000 watts, commonly used to measure the capacity of small solar systems.
-  - **Megawatt (MW)**: Equal to 1,000 kilowatts or one million watts, used for larger solar farms and power plants.
-  - **Gigawatt (GW)**: Equal to 1,000 megawatts or one billion watts, used to represent national or regional energy capacities.
-  - **Terawatt (TW)**: Equal to 1,000 gigawatts or one trillion watts, often used for global energy capacity.
-  - **Petawatt (PW)**: Equal to 1,000 terawatts or one quadrillion watts, applicable for global-scale discussions.
+
+#### **CF Conventions**
+- **CF (Climate and Forecast) Conventions**: The CF (Climate and Forecast) Convention standards are a set of metadata conventions designed to promote the processing and sharing of climate and forecast data, particularly for gridded data (e.g., netCDF, Zarr, or other array-based formats). Developed by the climate and weather modeling communities, these standards ensure that data files are self-describing, interoperable, and usable across different software tools and research groups.
+- **Standard Names**: CF Conventions define a controlled vocabulary of standard names that precisely describe physical quantities. For example:
+  - `air_temperature`: The bulk temperature of the air, suitable for air temperature measurements
+  - `surface_temperature`: Temperature of the surface of the Earth
+  - `surface_downwelling_shortwave_flux_in_air`: Total solar radiation reaching the Earth's surface
+- **Units**: CF Conventions require the use of standard units and provide methods for describing how to derive units.
+- **Dimensions**: The conventions specify how to identify coordinate variables and auxiliary coordinate variables.
+- **Metadata**: Includes attributes for describing the data's content, quality, and provenance.
+- For a complete list of CF standard names, visit the [CF Standard Names Table](https://cfconventions.org/Data/cf-standard-names/current/build/cf-standard-name-table.html)
+
+#### **Power Units**:
+- **Watt (W)**: The basic unit of power in the International System of Units (SI), representing one joule per second.
+- **Kilowatt (kW)**: Equal to 1,000 watts, commonly used to measure the capacity of small solar systems.
+- **Megawatt (MW)**: Equal to 1,000 kilowatts or one million watts, used for larger solar farms and power plants.
+- **Gigawatt (GW)**: Equal to 1,000 megawatts or one billion watts, used to represent national or regional energy capacities.
+- **Terawatt (TW)**: Equal to 1,000 gigawatts or one trillion watts, often used for global energy capacity.
+- **Petawatt (PW)**: Equal to 1,000 terawatts or one quadrillion watts, applicable for global-scale discussions.
 - **Energy vs. Power**:
   - **Power**: The rate at which energy is produced or consumed, typically measured in watts (W).
   - **Energy**: The total amount of work performed over time, measured in watt-hours (Wh), kilowatt-hours (kWh), etc.
@@ -595,7 +663,7 @@ open-data-pvnet <provider> <operation> [options]
 
 ### Available Providers
 - `metoffice`: UK Met Office weather data
-- `gfs`: Global Forecast System data (coming soon)
+- `gfs`: Global Forecast System data
 - `dwd`: German Weather Service data (coming soon)
 
 ### Operations
