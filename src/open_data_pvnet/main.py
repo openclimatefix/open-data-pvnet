@@ -15,6 +15,7 @@ from open_data_pvnet.utils.data_uploader import upload_monthly_zarr, upload_to_h
 from open_data_pvnet.scripts.archive import handle_archive
 from open_data_pvnet.nwp.met_office import CONFIG_PATHS
 from open_data_pvnet.nwp.dwd import process_dwd_data
+from .cli import main
 
 logger = logging.getLogger(__name__)
 
@@ -500,6 +501,11 @@ def main():
 
     return 0
 
+
+if __name__ == "__main__":
+    main()
+
+from open_data_pvnet.cli import main
 
 if __name__ == "__main__":
     main()
