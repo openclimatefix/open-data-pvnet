@@ -47,6 +47,7 @@ dependencies = [
     "cfgrib",
     "eccodes",
     "bz2file",
+    "typer",
 ]
 
 [project.optional-dependencies]
