@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "open-data-pvnet"
-version = "0.1.1"  # Static version
+dynamic = ["version"]
 readme = { file = "README.md", content-type = "text/markdown" }
 description = "An open-source project supporting solar forecasting with PVNet."
 license = { text = "MIT" }
