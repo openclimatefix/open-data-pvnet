@@ -1,0 +1,118 @@
+general:
+  description: Configuration for GFS data sampling
+  name: gfs_config
+
+input_data:
+  # # Either use Site OR GSP configuration
+  # site:
+  #   # Path to Site data in NetCDF format
+  #   file_path: PLACEHOLDER.nc
+  #   # Path to metadata in CSV format
+  #   metadata_file_path: PLACEHOLDER.csv
+  #   time_resolution_minutes: 15
+  #   interval_start_minutes: -60
+  #   # Specified for intraday currently
+  #   interval_end_minutes: 480
+  #   dropout_timedeltas_minutes: null
+  #   dropout_fraction: 0 # Fraction of samples with dropout
+
+  gsp:
+    # Path to GSP data in zarr format
+    # e.g. gs://solar-pv-nowcasting-data/PV/GSP/v7/pv_gsp.zarr
+    # zarr_path: "s3://ocf-open-data-pvnet/data/uk/pvlive/v2/combined_2023_gsp.zarr"
+    zarr_path: "/home/gsoc-siddharth/projects/PVNet/combined_2023_gsp.zarr"
+    interval_start_minutes: -60
+    # Specified for intraday currently
+    interval_end_minutes: 480
+    time_resolution_minutes: 30
+    # Random value from the list below will be chosen as the delay when dropout is used
+    # If set to null no dropout is applied. Only values before t0 are dropped out for GSP.
+    # Values after t0 are assumed as targets and cannot be dropped.
+    dropout_timedeltas_minutes: []
+    dropout_fraction: 0.0 # Fraction of samples with dropout
+    # public: True
+
+  nwp:
+    gfs:
+      time_resolution_minutes: 180 # Match the dataset's resolution (3 hours)
+      interval_start_minutes: -180
+      interval_end_minutes: 540
+      dropout_fraction: 0.0
+      dropout_timedeltas_minutes: []
+      # zarr_path: "s3://ocf-open-data-pvnet/data/gfs/v4/2023.zarr"
+      zarr_path: "/home/gsoc-siddharth/projects/PVNet/2023.zarr"
+      provider: "gfs"
+      image_size_pixels_height: 2
+      image_size_pixels_width: 2
+      # public: True
+      channels:
+        - dlwrf # downwards long-wave radiation flux
+        - dswrf # downwards short-wave radiation flux
+        - hcc # high cloud cover
+        - mcc # medium cloud cover
+        - lcc # low cloud cover
+        - prate # precipitation rate
+        - r # relative humidity
+        - t # 2-metre temperature
+        - tcc # total cloud cover
+        - u10 # 10-metre wind U component
+        - u100 # 100-metre wind U component
+        - v10 # 10-metre wind V component
+        - v100 # 100-metre wind V component
+        - vis # visibility
+      normalisation_constants:
+        dlwrf:
+          mean: 298.342
+          std: 96.305916
+        dswrf:
+          mean: 168.12321
+          std: 246.18533
+        hcc:
+          mean: 35.272
+          std: 42.525383
+        lcc:
+          mean: 43.578342
+          std: 44.3732
+        mcc:
+          mean: 33.738823
+          std: 43.150745
+        prate:
+          mean: 2.8190969e-05
+          std: 0.00010159573
+        r:
+          mean: 18.359747
+          std: 25.440672
+        sde:
+          mean: 0.36937004
+          std: 0.43345627
+        t:
+          mean: 278.5223
+          std: 22.825893
+        tcc:
+          mean: 66.841606
+          std: 41.030598
+        u10:
+          mean: -0.0022310058
+          std: 5.470838
+        u100:
+          mean: 0.0823025
+          std: 6.8899174
+        v10:
+          mean: 0.06219831
+          std: 4.7401133
+        v100:
+          mean: 0.0797807
+          std: 6.076132
+        vis:
+          mean: 19628.32
+          std: 8294.022
+        u:
+          mean: 11.645444
+          std: 10.614556
+        v:
+          mean: 0.12330122
+          std: 7.176398
+  solar_position:
+    interval_start_minutes: -60
+    interval_end_minutes: 480
+    time_resolution_minutes: 30
