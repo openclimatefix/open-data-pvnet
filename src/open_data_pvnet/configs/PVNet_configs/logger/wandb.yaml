@@ -3,10 +3,10 @@
 wandb:
   _target_: lightning.pytorch.loggers.wandb.WandbLogger
   # wandb project to log to
-  project: "PLACEHOLDER"
+  project: "GFS_TEST_RUN"
   name: "${model_name}"
   # location to store the wandb local logs
-  save_dir: "PLACEHOLDER"
+  save_dir: "GFS_TEST_RUN"
   offline: False # set True to store all logs only locally
   id: null # pass correct id to resume experiment!
   # entity: ""  # set to name of your wandb team or just remove it

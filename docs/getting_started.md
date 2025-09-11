@@ -20,6 +20,7 @@ Welcome to the Solar Forecasting project! This document will introduce you to th
 15. [How This Project Fits into Renewable Energy](#how-this-project-fits-into-renewable-energy)
 16. [Development and Testing Guide](#development-and-testing-guide)
 17. [Command Line Interface (CLI)](#command-line-interface-cli)
+18. [Running PVNet Model](#running-pvnet-model)
 
 ---
 
@@ -721,6 +722,30 @@ Common error messages and their solutions:
 - "No datasets found": Check if the specified date has available data
 - "Error loading dataset": Verify your internet connection and credentials
 - "Invalid chunks specification": Ensure chunk string follows the format "dim1:size1,dim2:size2"
+
+
+## Running PVNet Model
+
+1. Update configuration file
+  Go to src/open_data_pvnet/configs/PVNet_configs/datamodule/streamed_batches.yaml
+
+  Change values if desired (increase at your discretion):
+  num_train_samples: 5
+  num_val_samples: 5
+
+2. Update src/open_data_pvnet/configs/PVNet_configs/config.yaml
+  Change the line to - datamodule: premade_batches.yaml
+
+3. Open a Weights & Biases Account https://wandb.ai/
+  Go to src/open_data_pvnet/configs/PVNet_configs/logger/wandb.yaml
+  Change to project: "GFS_TEST_RUN"
+  Change to save_dir: "GFS_TEST_RUN"
+
+4. Run the samples
+  python src/open_data_pvnet/scripts/save_samples.py
+
+
+
 
 ---
 
