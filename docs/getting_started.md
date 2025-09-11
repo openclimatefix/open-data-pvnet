@@ -733,15 +733,18 @@ Common error messages and their solutions:
   num_train_samples: 5
   num_val_samples: 5
 
-2. Update src/open_data_pvnet/configs/PVNet_configs/config.yaml
+2. Update src/open_data_pvnet/configs/PVNet_configs/datamodule/premade_batches.yaml
+  Change this line to configuration: <your_directory...open-data-pvnet/src/open_data_pvnet/configs/PVNet_configs/datamodule/configuration/example_configuration.yaml>
+
+3. Update src/open_data_pvnet/configs/PVNet_configs/config.yaml
   Change the line to - datamodule: premade_batches.yaml
 
-3. Open a Weights & Biases Account https://wandb.ai/
+4. Open a Weights & Biases Account https://wandb.ai/
   Go to src/open_data_pvnet/configs/PVNet_configs/logger/wandb.yaml
   Change to project: "GFS_TEST_RUN"
   Change to save_dir: "GFS_TEST_RUN"
 
-4. Run the samples
+5. Run the samples
   python src/open_data_pvnet/scripts/save_samples.py
 
 
