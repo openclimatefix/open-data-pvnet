@@ -1,5 +1,10 @@
 import pytest
 from unittest.mock import Mock
+import sys
+import pathlib
+
+src_dir = pathlib.Path(__file__).parent.parent / 'src'
+sys.path.insert(0, str(src_dir))
 
 from open_data_pvnet.nwp.met_office import (
     generate_prefix,

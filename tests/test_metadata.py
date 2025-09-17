@@ -1,4 +1,10 @@
 import tomllib
+import sys
+import pathlib
+
+src_dir = pathlib.Path(__file__).parent.parent / 'src'
+sys.path.insert(0, str(src_dir))
+
 import open_data_pvnet
 
 
