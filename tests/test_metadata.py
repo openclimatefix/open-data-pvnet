@@ -1,10 +1,6 @@
 import tomllib
-import sys
-import os
 from importlib import metadata
 
-# Add src directory to path to import open_data_pvnet
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 import open_data_pvnet
 
 
