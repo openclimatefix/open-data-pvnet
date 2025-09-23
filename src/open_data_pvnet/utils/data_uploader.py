@@ -26,7 +26,7 @@ def _validate_config(config):
     # First validate required fields
     if "general" not in config:
         raise ValueError("No general configuration section found")
-    
+
     if "destination_dataset_id" not in config["general"]:
         raise ValueError("No destination_dataset_id found in general configuration")
 
@@ -41,7 +41,7 @@ def _validate_config(config):
 
     # Check provider configuration
     nwp_config = config["input_data"]["nwp"]
-    
+
     # Check if it's a DWD config
     if "dwd" in nwp_config:
         local_output_dir = nwp_config["dwd"]["local_output_dir"]
