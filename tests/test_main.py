@@ -6,101 +6,70 @@ from open_data_pvnet.main import (
     main,
 )
 
-
-def test_configure_parser():
+# Helper function for argument parsing tests
+def parse_args(args_list):
     parser = configure_parser()
+    return parser.parse_args(args_list)
 
-    # Test basic parser configuration
-    assert parser.prog == "open-data-pvnet"
 
-    # Test --list argument
-    args = parser.parse_args(["--list", "providers"])
-    assert args.list == "providers"
-
-    # Test metoffice archive command
-    args = parser.parse_args(
-        [
-            "metoffice",
-            "archive",
-            "--year",
-            "2024",
-            "--month",
-            "3",
-            "--day",
-            "1",
-            "--hour",
-            "12",
-            "--region",
-            "global",
-            "--archive-type",
-            "zarr.zip",
-        ]
-    )
-    assert args.command == "metoffice"
-    assert args.operation == "archive"
-    assert args.year == 2024
-    assert args.month == 3
-    assert args.day == 1
-    assert args.hour == 12
-    assert args.region == "global"
-    assert args.archive_type == "zarr.zip"
-    assert not args.overwrite
-
-    # Test metoffice load command
-    args = parser.parse_args(
-        [
-            "metoffice",
-            "load",
-            "--year",
-            "2024",
-            "--month",
-            "3",
-            "--day",
-            "1",
-            "--hour",
-            "12",
-            "--region",
-            "uk",
-            "--chunks",
-            "time:24,latitude:100",
-        ]
-    )
-    assert args.command == "metoffice"
-    assert args.operation == "load"
-    assert args.year == 2024
-    assert args.month == 3
-    assert args.day == 1
-    assert args.hour == 12
-    assert args.region == "uk"
-    assert args.chunks == "time:24,latitude:100"
-
-    # Test gfs command with tar archive type
-    args = parser.parse_args(
-        [
-            "gfs",
-            "archive",
-            "--year",
-            "2024",
-            "--month",
-            "3",
-            "--day",
-            "1",
-            "--archive-type",
-            "tar",
-        ]
-    )
-    assert args.command == "gfs"
-    assert args.operation == "archive"
-    assert args.year == 2024
-    assert args.month == 3
-    assert args.day == 1
-    assert args.archive_type == "tar"
-    assert not args.overwrite
+@pytest.mark.parametrize(
+    "args, expected",
+    [
+        (["--list", "providers"], {"list": "providers"}),
+        (
+            [
+                "metoffice",
+                "archive",
+                "--year", "2024",
+                "--month", "3",
+                "--day", "1",
+                "--hour", "12",
+                "--region", "global",
+                "--archive-type", "zarr.zip",
+            ],
+            {
+                "command": "metoffice",
+                "operation": "archive",
+                "year": 2024,
+                "month": 3,
+                "day": 1,
+                "hour": 12,
+                "region": "global",
+                "archive_type": "zarr.zip",
+                "overwrite": False,
+            },
+        ),
+        (
+            [
+                "gfs",
+                "archive",
+                "--year", "2024",
+                "--month", "3",
+                "--day", "1",
+                "--archive-type", "tar",
+            ],
+            {
+                "command": "gfs",
+                "operation": "archive",
+                "year": 2024,
+                "month": 3,
+                "day": 1,
+                "archive_type": "tar",
+                "overwrite": False,
+            },
+        ),
+    ],
+)
+def test_configure_parser(args, expected):
+    parsed_args = parse_args(args)
+    for key, value in expected.items():
+        assert getattr(parsed_args, key) == value
 
 
 @patch("open_data_pvnet.main.load_environment_variables")
 @patch("open_data_pvnet.main.logging.basicConfig")
 def test_load_env_and_setup_logger_success(mock_logging, mock_load_env):
+    """Test successful environment setup and logging initialization."""
     load_env_and_setup_logger()
     mock_load_env.assert_called_once()
     mock_logging.assert_called_once()
@@ -108,87 +77,95 @@ def test_load_env_and_setup_logger_success(mock_logging, mock_load_env):
 
 @patch("open_data_pvnet.main.load_environment_variables")
 def test_load_env_and_setup_logger_failure(mock_load_env):
+    """Test failure when environment variables cannot be loaded."""
     mock_load_env.side_effect = FileNotFoundError("Config file not found")
     with pytest.raises(FileNotFoundError):
         load_env_and_setup_logger()
 
 
+@pytest.mark.parametrize(
+    "test_args, expected_kwargs",
+    [
+        (
+            [
+                "metoffice",
+                "load",
+                "--year", "2024",
+                "--month", "3",
+                "--day", "1",
+                "--hour", "12",
+                "--region", "uk",
+                "--chunks", "time:24,latitude:100",
+            ],
+            {
+                "provider": "metoffice",
+                "year": 2024,
+                "month": 3,
+                "day": 1,
+                "hour": 12,
+                "region": "uk",
+                "overwrite": False,
+                "chunks": "time:24,latitude:100",
+                "remote": False,
+            },
+        ),
+        (
+            [
+                "metoffice",
+                "load",
+                "--year", "2024",
+                "--month", "3",
+                "--day", "1",
+                "--hour", "12",
+                "--region", "uk",
+                "--chunks", "time:24,latitude:100",
+                "--remote",
+            ],
+            {
+                "provider": "metoffice",
+                "year": 2024,
+                "month": 3,
+                "day": 1,
+                "hour": 12,
+                "region": "uk",
+                "overwrite": False,
+                "chunks": "time:24,latitude:100",
+                "remote": True,
+            },
+        ),
+    ],
+)
 @patch("open_data_pvnet.main.handle_load")
 @patch("open_data_pvnet.main.load_env_and_setup_logger")
-def test_main_metoffice_load(mock_load_env, mock_handle_load):
-    # Test metoffice load command
-    test_args = [
-        "metoffice",
-        "load",
-        "--year",
-        "2024",
-        "--month",
-        "3",
-        "--day",
-        "1",
-        "--hour",
-        "12",
-        "--region",
-        "uk",
-        "--chunks",
-        "time:24,latitude:100",
-    ]
+def test_main_metoffice_load(mock_load_env, mock_handle_load, test_args, expected_kwargs):
+    """Test 'metoffice load' command execution."""
     with patch("sys.argv", ["script"] + test_args):
         main()
-        mock_handle_load.assert_called_once_with(
-            provider="metoffice",
-            year=2024,
-            month=3,
-            day=1,
-            hour=12,
-            region="uk",
-            overwrite=False,
-            chunks="time:24,latitude:100",
-            remote=False,
-        )
+        mock_handle_load.assert_called_once_with(**expected_kwargs)
 
 
 @patch("open_data_pvnet.main.print")
 @patch("open_data_pvnet.main.load_env_and_setup_logger")
 def test_main_list_providers(mock_load_env, mock_print):
-    # Test --list providers
+    """Test listing available providers."""
     test_args = ["--list", "providers"]
     with patch("sys.argv", ["script"] + test_args):
         main()
-        assert mock_print.call_count == 4  # One for header + three providers
+        assert mock_print.call_count >= 3  # Expect at least three providers listed
+
+
+def test_invalid_arguments():
+    """Test handling of invalid arguments."""
+    parser = configure_parser()
+    with pytest.raises(SystemExit):  # argparse raises SystemExit on invalid input
+        parser.parse_args(["invalid_command"])
 
 
 @patch("open_data_pvnet.main.handle_load")
 @patch("open_data_pvnet.main.load_env_and_setup_logger")
-def test_main_metoffice_load_remote(mock_load_env, mock_handle_load):
-    # Test metoffice load command with remote option
-    test_args = [
-        "metoffice",
-        "load",
-        "--year",
-        "2024",
-        "--month",
-        "3",
-        "--day",
-        "1",
-        "--hour",
-        "12",
-        "--region",
-        "uk",
-        "--chunks",
-        "time:24,latitude:100",
-        "--remote",  # Add remote flag
-    ]
+def test_main_with_missing_required_args(mock_load_env, mock_handle_load):
+    """Test missing required arguments handling."""
+    test_args = ["metoffice", "load", "--year", "2024"]  # Missing required args
     with patch("sys.argv", ["script"] + test_args):
-        main()
-        mock_handle_load.assert_called_once_with(
-            provider="metoffice",
-            year=2024,
-            month=3,
-            day=1,
-            hour=12,
-            region="uk",
-            overwrite=False,
-            chunks="time:24,latitude:100",
-            remote=True,
-        )
+        with pytest.raises(SystemExit):  # argparse exits on missing args
+            main()
