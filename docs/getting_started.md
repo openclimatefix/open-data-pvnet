@@ -757,7 +757,14 @@ Common error messages and their solutions:
 
   # If running in a virtual environment, be sure to activate it. `source ./venv/bin/activate`
   `rm -rf GFS_samples PLACEHOLDER` # to remove previous sample runs
-  python src/open_data_pvnet/scripts/save_samples.py
+  `python src/open_data_pvnet/scripts/save_samples.py`
+
+6. Run the training
+  Go to config.yaml and change this line
+  `- datamodule: streamed_batches.yaml` to `- datamodule: premade_batches.yaml`
+  `python run.py`
+
+
 
 
 

@@ -8,7 +8,8 @@ wandb:
   # location to store the wandb local logs
   save_dir: "GFS_TEST_RUN"
   offline: False # set True to store all logs only locally
-  id: null # pass correct id to resume experiment!
+  # id: null # pass correct id to resume experiment!
+  id: "${oc.env:WANDB_RUN_ID}"
   # entity: ""  # set to name of your wandb team or just remove it
   log_model: True
   prefix: ""

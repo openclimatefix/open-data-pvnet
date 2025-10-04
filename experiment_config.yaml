@@ -1,0 +1,110 @@
+renewable: pv_uk
+work_dir: ${hydra:runtime.cwd}
+model_name: default
+debug: false
+print_config: true
+ignore_warnings: true
+test_after_training: false
+seed: 2727831
+trainer:
+  _target_: lightning.pytorch.trainer.trainer.Trainer
+  accelerator: auto
+  devices: 0
+  min_epochs: null
+  max_epochs: null
+  reload_dataloaders_every_n_epochs: 0
+  num_sanity_val_steps: 8
+  fast_dev_run: false
+  accumulate_grad_batches: 4
+  log_every_n_steps: 50
+model:
+  _target_: pvnet.models.multimodal.multimodal.Model
+  output_quantiles:
+  - 0.02
+  - 0.1
+  - 0.25
+  - 0.5
+  - 0.75
+  - 0.9
+  - 0.98
+  nwp_encoders_dict:
+    gfs:
+      _target_: pvnet.models.multimodal.encoders.encoders3d.ResConv3DNet2
+      _partial_: true
+      in_channels: 14
+      out_features: 32
+      n_res_blocks: 1
+      hidden_channels: 6
+      image_size_pixels: 2
+  output_network:
+    _target_: pvnet.models.multimodal.linear_networks.networks.ResFCNet2
+    _partial_: true
+    fc_hidden_features: 128
+    n_res_blocks: 6
+    res_block_layers: 2
+    dropout_frac: 0.0
+  embedding_dim: 16
+  include_sun: true
+  include_gsp_yield_history: false
+  include_site_yield_history: false
+  forecast_minutes: 480
+  history_minutes: 60
+  nwp_history_minutes:
+    gfs: 180
+  nwp_forecast_minutes:
+    gfs: 540
+  nwp_interval_minutes:
+    gfs: 180
+  optimizer:
+    _target_: pvnet.optimizers.EmbAdamWReduceLROnPlateau
+    lr: 0.0001
+    weight_decay: 0.01
+    amsgrad: true
+    patience: 5
+    factor: 0.1
+    threshold: 0.002
+datamodule:
+  _target_: pvnet.data.DataModule
+  configuration: null
+  sample_dir: GFS_samples
+  num_workers: 8
+  prefetch_factor: 2
+  batch_size: 8
+callbacks:
+  early_stopping:
+    _target_: lightning.pytorch.callbacks.EarlyStopping
+    monitor: ${resolve_monitor_loss:${model.output_quantiles}}
+    mode: min
+    patience: 10
+    min_delta: 0
+  learning_rate_monitor:
+    _target_: lightning.pytorch.callbacks.LearningRateMonitor
+    logging_interval: epoch
+  model_summary:
+    _target_: lightning.pytorch.callbacks.ModelSummary
+    max_depth: 3
+  model_checkpoint:
+    _target_: lightning.pytorch.callbacks.ModelCheckpoint
+    monitor: ${resolve_monitor_loss:${model.output_quantiles}}
+    mode: min
+    save_top_k: 1
+    save_last: true
+    every_n_epochs: 1
+    verbose: false
+    filename: epoch={epoch}-step={step}
+    dirpath: PLACEHOLDER/${model_name}
+    auto_insert_metric_name: false
+    save_on_train_epoch_end: false
+logger:
+  wandb:
+    _target_: lightning.pytorch.loggers.wandb.WandbLogger
+    project: GFS_TEST_RUN
+    name: ${model_name}
+    save_dir: GFS_TEST_RUN
+    offline: false
+    id: ${oc.env:WANDB_RUN_ID}
+    log_model: true
+    prefix: ''
+    job_type: train
+    group: ''
+    tags: []
