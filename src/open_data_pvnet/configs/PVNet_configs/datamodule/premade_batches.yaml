@@ -7,7 +7,7 @@ configuration: null
 # The sample_dir is the location batches were saved to using the save_batches.py script
 # The sample_dir should contain train and val subdirectories with batches
 
-sample_output_dir: "GFS_samples"
+sample_dir: "GFS_samples"
 num_workers: 8
 prefetch_factor: 2
 batch_size: 8

@@ -745,6 +745,18 @@ Common error messages and their solutions:
   Change to save_dir: "GFS_TEST_RUN"
 
 5. Run the samples
+  We recommend you save the samples locally for faster processing
+  In your main open-data-pvnet directory, run the following command (assumes aws cli is installed locally)
+    aws s3 sync s3://ocf-open-data-pvnet/data/gfs/v4/2023.zarr/ ./gfs_2023.zarr --no-sign-request
+    aws s3 sync s3://ocf-open-data-pvnet/data/uk/pvlive/v2/combined_2023_gsp.zarr ./gsp_2023.zarr --no-sign-request
+  Change the example_configuration.yaml `zarr_path` attributes to local paths you made above
+  Comment out both of these lines
+    `public: True` # If you are going to use the actual s3 buckets then leave alone however this may be really slow
+  In streamed_batches.yaml change this line
+    `configuration: null` to your actual path of the example_configuration.yaml file
+
+  # If running in a virtual environment, be sure to activate it. `source ./venv/bin/activate`
+  `rm -rf GFS_samples PLACEHOLDER` # to remove previous sample runs
   python src/open_data_pvnet/scripts/save_samples.py
 
 

@@ -104,3 +104,4 @@ config_tree.txt
 GFS_samples/
 PLACEHOLDER/
 *.zarr
+example_configuration.yaml # config file for samples adjusted for local paths
