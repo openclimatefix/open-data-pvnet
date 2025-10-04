@@ -9,7 +9,7 @@ seed: 2727831
 trainer:
   _target_: lightning.pytorch.trainer.trainer.Trainer
   accelerator: auto
-  devices: 0
+  devices: auto
   min_epochs: null
   max_epochs: null
   reload_dataloaders_every_n_epochs: 0

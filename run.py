@@ -13,12 +13,6 @@ try:
 except RuntimeError:
     pass
 
-# Set default tensor type to float32 for MPS compatibility
-if torch.backends.mps.is_available():
-    torch.set_default_tensor_type(torch.FloatTensor)
-    # Also set default dtype globally to float32
-    torch.set_default_dtype(torch.float32)
-
 import logging
 import sys
 
@@ -35,10 +29,6 @@ warnings.filterwarnings("ignore", category=sa_exc.SAWarning)
 logging.basicConfig(stream=sys.stdout, level=logging.ERROR)
 
 os.environ["HYDRA_FULL_ERROR"] = "1"
-
-# Option to force CPU usage if MPS has issues
-# Uncomment the line below if you want to force CPU usage
-# os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 
 if "WANDB_RUN_ID" not in os.environ:
     os.environ["WANDB_RUN_ID"] = datetime.now().strftime("%y%m%d%H%M%S")
