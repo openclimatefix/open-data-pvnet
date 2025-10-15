@@ -106,3 +106,4 @@ GFS_TEST_RUN/
 PLACEHOLDER/
 *.zarr
 example_configuration.yaml # config file for samples adjusted for local paths
+experiment_config.yaml

@@ -2,7 +2,7 @@ _target_: pvnet.data.DataModule
 # Path to the data configuration yaml file. You can find examples in the configuration subdirectory
 # in configs.example/datamodule/configuration
 # Use the full local path such as: /FULL/PATH/PVNet/configs/datamodule/configuration/gcp_configuration.yaml"
-configuration: "/Users/jacquescamier/Development/ML_AI/open-data-pvnet/src/open_data_pvnet/configs/PVNet_configs/datamodule/configuration/example_configuration.yaml"
+configuration: null
 num_workers: 8
 prefetch_factor: 2
 batch_size: 8
