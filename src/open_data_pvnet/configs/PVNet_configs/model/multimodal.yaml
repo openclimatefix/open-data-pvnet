@@ -1,44 +1,119 @@
 _target_: pvnet.models.multimodal.multimodal.Model
 
-optimizer:
-  _target_: pvnet.optimizers.AdamW
-  lr: 0.0001
+output_quantiles: [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98]
+
+#--------------------------------------------
+# NWP encoder
+#--------------------------------------------
+
+nwp_encoders_dict:
+  ukv:
+    _target_: pvnet.models.multimodal.encoders.encoders3d.ResConv3DNet
+    _partial_: True 
+    in_channels: 1  
+    out_features: 256 
+    n_res_blocks: 4 
+    res_block_layers: 2 
+    dropout_frac: 0.0
+    image_size_pixels: 24
+  # ecmwf:
+  #   _target_: pvnet.models.multimodal.encoders.encoders3d.DefaultPVNet
+  #   _partial_: True
+  #   in_channels: 12
+  #   out_features: 256
+  #   number_of_conv3d_layers: 4
+  #   conv3d_channels: 32
+  #   image_size_pixels: 12
+  # gfs:
+  #   _target_: pvnet.models.multimodal.encoders.encoders3d.ResConv3DNet2
+  #   _partial_: True
+  #   in_channels: 14
+  #   out_features: 32
+  #   n_res_blocks: 1
+  #   hidden_channels: 6
+  #   image_size_pixels: 2
+
+#--------------------------------------------
+# Sat encoder settings
+#--------------------------------------------
+
+# sat_encoder:
+#   _target_: pvnet.models.multimodal.encoders.encoders3d.DefaultPVNet
+#   _partial_: True
+#   in_channels: 11
+#   out_features: 256
+#   number_of_conv3d_layers: 6
+#   conv3d_channels: 32
+#   image_size_pixels: 24
+
+add_image_embedding_channel: True 
+
+#--------------------------------------------
+# PV encoder settings
+#--------------------------------------------
+
+# pv_encoder:
+#   _target_: pvnet.models.multimodal.site_encoders.encoders.SingleAttentionNetwork
+#   _partial_: True
+#   num_sites: 349
+#   out_features: 40
+#   num_heads: 4
+#   kdim: 40
+#   id_embed_dim: 20
+
+#--------------------------------------------
+# Tabular network settings
+#--------------------------------------------
 
 output_network:
-  _target_: pvnet.models.multimodal.linear_networks.networks.ResFCNet
-  _partial_: true
+  _target_: pvnet.models.multimodal.linear_networks.networks.ResFCNet 
+  _partial_: True 
   fc_hidden_features: 128
   n_res_blocks: 2
   res_block_layers: 2
   dropout_frac: 0.0
 
-output_quantiles: [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98]
-
-nwp_encoders_dict:
-  # ukv:
-  #   _target_: pvnet.models.multimodal.encoders.encoders3d.ResConv3DNet
-  #   _partial_: true
-  #   in_channels: 1
-  #   out_features: 256
-  #   image_size_pixels: 24
-  #   n_res_blocks: 4
-  #   res_block_layers: 2
-  #   dropout_frac: 0.0
-
-add_image_embedding_channel: true
-include_gsp_yield_history: false
-include_sun: true
-include_time: false
 embedding_dim: 16
+include_sun: True
+include_time: False
+include_gsp_yield_history: False
+include_site_yield_history: False
+
+# The mapping between the location IDs and their embedding indices
+# location_id_mapping:
+#   1: 1
+#   5: 2
+#   110: 3
+# ...
+
+#--------------------------------------------
+# Times
+#--------------------------------------------
+
+# Forecast and time settings
 forecast_minutes: 480
-history_minutes: 120
+history_minutes: 120 
+
 sat_history_minutes: 90
-min_sat_delay_minutes: 30
+min_sat_delay_minutes: 30 
+
+# These must also be set even if identical to forecast_minutes and history_minutes
+# pv_history_minutes: 180
+pv_interval_minutes: 5 
+sat_interval_minutes: 5
+
+# These must be set for each NWP encoder
+nwp_history_minutes:
+  ukv: 120 
 nwp_forecast_minutes:
   ukv: 480
-nwp_history_minutes:
-  ukv: 120
-sat_interval_minutes: 5
-pv_interval_minutes: 5
 nwp_interval_minutes:
   ukv: 60
+
+# ----------------------------------------------
+# Optimizer
+# ----------------------------------------------
+
+optimizer:
+  _target_: pvnet.optimizers.AdamW  # CHANGED from EmbAdamWReduceLROnPlateau
+  lr: 0.0001
