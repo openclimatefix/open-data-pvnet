@@ -104,7 +104,7 @@ def test_process_dwd_data_success(mocker, mock_config, tmp_path):
     mock_ds.data_vars = ["t2m"]
     mock_ds.rename.return_value = mock_ds
 
-    mock_open_dataset = mocker.patch("xarray.open_dataset", return_value=mock_ds)
+    mocker.patch("xarray.open_dataset", return_value=mock_ds)
     mock_merge = mocker.patch("xarray.merge")
     mock_merged = mocker.MagicMock()
     mock_merged.to_zarr = mocker.MagicMock()
