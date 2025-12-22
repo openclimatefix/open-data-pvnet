@@ -14,6 +14,7 @@ DATASET_REPO = "openclimatefix/met-office-uk-deterministic-solar"
 
 def download_from_hf(repo_path: str, local_path: Path) -> None:
     """Download a file from HuggingFace."""
+    repo_path = repo_path.replace("\\", "/")
     logger.info(f"Downloading {repo_path} from Hugging Face...")
     local_path.parent.mkdir(parents=True, exist_ok=True)
     hf_hub_download(
