@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "open-data-pvnet"
-version = "0.1.1"  # Static version
+dynamic = ["version"]
 readme = { file = "README.md", content-type = "text/markdown" }
 description = "An open-source project supporting solar forecasting with PVNet."
 license = { text = "MIT" }
@@ -30,8 +30,9 @@ dependencies = [
     "pandas",
     "requests",
     "xarray",
-    "zarr",
-    "ocf-data-sampler",
+    "zarr==2.18.3",
+    "pvnet==4.1.19",
+    "ocf-data-sampler==0.2.32",
     "ocf_ml_metrics>=0.0.11",
     "huggingface-hub",
     "pydantic==2.5.3",
@@ -47,6 +48,7 @@ dependencies = [
     "cfgrib",
     "eccodes",
     "bz2file",
+    "typer",
 ]
 
 [project.optional-dependencies]
