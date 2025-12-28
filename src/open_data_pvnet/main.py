@@ -80,6 +80,13 @@ def _add_common_arguments(parser, provider_name):
             default="eu",
             help="Specify the DWD dataset region (default: eu)",
         )
+    elif provider_name == "gfs":
+        parser.add_argument(
+            "--region",
+            choices=["global", "us"],
+            default="global",
+            help="Specify the GFS dataset region (default: global)",
+        )
 
     parser.add_argument(
         "--overwrite",
