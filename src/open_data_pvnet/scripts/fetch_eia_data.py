@@ -64,12 +64,6 @@ class EIAData:
         }
 
         if ba_codes:
-            # Add facets for respondent (BA)
-            for ba in ba_codes:
-                # Note: EIA API allows multiple values for a facet
-                # But requests params dict with list value handles standard query string usually.
-                # However, EIA might want 'facets[respondent][]': ['BA1', 'BA2']
-                pass
             params["facets[respondent][]"] = ba_codes
 
         all_data = []
@@ -110,11 +104,8 @@ class EIAData:
 
         df = pd.DataFrame(all_data)
         
-        # Parse timestamp
-        # 'period' is usually in ISO format or similar for hourly 'YYYY-MM-DDTHH'
         df["period"] = pd.to_datetime(df["period"])
         
-        # Rename columns to standard names
         df = df.rename(columns={
             "period": "timestamp",
             "value": "generation_mw",
@@ -122,9 +113,7 @@ class EIAData:
             "respondent-name": "ba_name"
         })
         
-        # Select relevant columns
         cols_to_keep = ["timestamp", "ba_code", "ba_name", "generation_mw", "value-units"]
-        # Filter existing columns
         cols_to_keep = [c for c in cols_to_keep if c in df.columns]
         
         return df[cols_to_keep]

@@ -136,28 +136,21 @@ def preprocess_eia_data(
     """
     logger.info(f"Loading EIA data from {input_path}")
     
-    # Load input data
     if input_path.endswith(".zarr"):
         ds = xr.open_dataset(input_path, engine="zarr")
     else:
         ds = xr.open_dataset(input_path)
     
-    # Convert to DataFrame for easier manipulation
-    # Handle both MultiIndex and regular index cases
     df = ds.to_dataframe()
     if isinstance(df.index, pd.MultiIndex):
         df = df.reset_index()
     else:
-        # If it's a single index, we need to check what the index is
         if df.index.name in ["timestamp", "datetime_gmt"]:
-            # Need to reset and check for ba_code in columns or index
             df = df.reset_index()
     
     logger.info(f"Loaded {len(df)} rows")
     
-    # Ensure ba_code exists
     if "ba_code" not in df.columns:
-        # Check if it's in the index
         if isinstance(ds.indexes.get("ba_code"), pd.Index):
             df = df.reset_index()
         else:
@@ -165,26 +158,21 @@ def preprocess_eia_data(
     
     logger.info(f"Loaded {len(df)} rows for {df['ba_code'].nunique()} BAs")
     
-    # Rename timestamp to datetime_gmt and ensure proper format
     if "timestamp" in df.columns:
         df["datetime_gmt"] = pd.to_datetime(df["timestamp"], utc=True)
-        # Remove timezone info (like UK implementation)
         df["datetime_gmt"] = df["datetime_gmt"].dt.tz_convert(None)
         df = df.drop(columns=["timestamp"])
     elif "datetime_gmt" not in df.columns:
         raise ValueError("No timestamp or datetime_gmt column found")
     
-    # Ensure generation_mw is numeric
     if "generation_mw" in df.columns:
         df["generation_mw"] = pd.to_numeric(df["generation_mw"], errors="coerce")
     else:
         raise ValueError("No generation_mw column found")
     
-    # Create BA mapping
     ba_to_id, metadata = create_ba_mapping(df)
     df["ba_id"] = df["ba_code"].map(ba_to_id)
     
-    # Handle capacity data
     if capacity_method == "estimate":
         logger.info("Estimating capacity from maximum generation")
         capacity_estimates = estimate_capacity_from_generation(df)
@@ -192,17 +180,14 @@ def preprocess_eia_data(
     elif capacity_method == "file" and capacity_file:
         logger.info(f"Loading capacity from {capacity_file}")
         capacity_df = pd.read_csv(capacity_file)
-        # Assume CSV has ba_code and capacity_mwp columns
         capacity_map = dict(zip(capacity_df["ba_code"], capacity_df["capacity_mwp"]))
         df["capacity_mwp"] = df["ba_code"].map(capacity_map)
     elif capacity_method == "static":
-        # Use a static value (not recommended but possible)
         logger.warning("Using static capacity values (not recommended)")
-        df["capacity_mwp"] = 1000.0  # Placeholder
+        df["capacity_mwp"] = 1000.0
     else:
         raise ValueError(f"Invalid capacity_method: {capacity_method}")
     
-    # Validate capacity data
     if df["capacity_mwp"].isna().any():
         logger.warning("Some BAs have missing capacity data, filling with estimates")
         missing_bas = df[df["capacity_mwp"].isna()]["ba_code"].unique()
@@ -211,10 +196,8 @@ def preprocess_eia_data(
             estimated_capacity = ba_gen * 1.15 if not pd.isna(ba_gen) else 100.0
             df.loc[df["ba_code"] == ba, "capacity_mwp"] = estimated_capacity
     
-    # Ensure capacity >= generation (with small tolerance)
     df["capacity_mwp"] = df[["capacity_mwp", "generation_mw"]].max(axis=1) * 1.01
     
-    # Select and reorder columns
     columns_to_keep = ["ba_id", "datetime_gmt", "generation_mw", "capacity_mwp"]
     if "ba_code" in df.columns:
         columns_to_keep.append("ba_code")
@@ -227,10 +210,8 @@ def preprocess_eia_data(
     
     df_processed = df[columns_to_keep].copy()
     
-    # Set index to match UK format: (ba_id, datetime_gmt)
     df_processed = df_processed.set_index(["ba_id", "datetime_gmt"])
     
-    # Convert to xarray Dataset
     ds_processed = xr.Dataset.from_dataframe(df_processed)
     
     # Ensure datetime_gmt is datetime64[ns] (no timezone)
@@ -238,9 +219,12 @@ def preprocess_eia_data(
         ds_processed.coords["datetime_gmt"] = ds_processed.coords["datetime_gmt"].astype(np.datetime64)
     
     # Apply chunking like UK implementation
-    # UK uses: {"gsp_id": 1, "datetime_gmt": 1000}
     # We'll use: {"ba_id": 1, "datetime_gmt": 1000}
-    ds_processed = ds_processed.chunk({"ba_id": 1, "datetime_gmt": 1000})
+    try:
+        import dask
+        ds_processed = ds_processed.chunk({"ba_id": 1, "datetime_gmt": 1000})
+    except ImportError:
+        logger.warning("Dask not installed, skipping chunking. Performance may be affected.")
     
     # Ensure output directory exists
     output_dir = os.path.dirname(os.path.abspath(output_path))

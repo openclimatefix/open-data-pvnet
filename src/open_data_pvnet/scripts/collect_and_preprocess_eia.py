@@ -110,16 +110,11 @@ def main():
     
     # Step 1: Collect raw EIA data
     if not args.skip_collection:
-        logger.info("=" * 60)
-        logger.info("Step 1: Collecting EIA data")
-        logger.info("=" * 60)
-        
         try:
             load_environment_variables()
         except Exception as e:
             logger.warning(f"Could not load environment variables: {e}")
         
-        # Use default BAs if not specified
         if args.bas is None:
             DEFAULT_BAS = ['CISO', 'ERCO', 'PJM', 'MISO', 'NYIS', 'ISNE', 'SWPP']
             bas = DEFAULT_BAS
@@ -145,7 +140,6 @@ def main():
         
         logger.info(f"Fetched {len(df)} rows.")
         
-        # BA Centroids (Approximate)
         ba_centroids = {
             'CISO': {'latitude': 37.0, 'longitude': -120.0},
             'ERCO': {'latitude': 31.0, 'longitude': -99.0},
@@ -176,7 +170,6 @@ def main():
         # Ensure output directory exists
         os.makedirs(os.path.dirname(os.path.abspath(raw_path)), exist_ok=True)
         
-        # Save to Zarr
         ds.to_zarr(raw_path, mode="w", consolidated=True)
         
         logger.info(f"✅ Raw EIA data collected: {raw_path}")
@@ -186,12 +179,21 @@ def main():
             logger.error(f"Raw data file not found: {raw_path}")
             return 1
     
+    # Step 2: Preprocess
+    try:
+        preprocess_eia_data(
+            input_path=raw_path,
+            output_path=processed_path,
+            metadata_output_path=metadata_path,
+            capacity_method=args.capacity_method,
+            capacity_file=args.capacity_file,
+        )
+    except Exception as e:
+        logger.error(f"Preprocessing failed: {e}")
+        return 1
+    
     # Step 3: Optional S3 Upload
     if args.upload_to_s3:
-        logger.info("=" * 60)
-        logger.info("Step 3: Uploading to S3")
-        logger.info("=" * 60)
-        
         from open_data_pvnet.scripts.upload_eia_to_s3 import upload_directory_to_s3
         
         # Upload processed data
@@ -223,20 +225,12 @@ def main():
             # Don't fail the whole script if upload fails, but warn user
     
     # Summary
-    logger.info("=" * 60)
-    logger.info("✅ Collection and preprocessing complete!")
-    logger.info("=" * 60)
+    logger.info("Collection and preprocessing complete!")
     logger.info(f"Raw data: {raw_path}")
     logger.info(f"Processed data: {processed_path}")
     logger.info(f"Metadata: {metadata_path}")
     if args.upload_to_s3:
          logger.info(f"S3 Target: s3://{args.s3_bucket}/{args.s3_prefix}/{args.s3_version}")
-    logger.info("")
-    logger.info("Next steps:")
-    logger.info("1. Test compatibility: python src/open_data_pvnet/scripts/test_eia_sampler_compatibility.py \\")
-    logger.info(f"   --data-path {processed_path}")
-    logger.info("2. Update configuration files to use processed data")
-    logger.info("3. Proceed with PVNet training setup")
     
     return 0
 

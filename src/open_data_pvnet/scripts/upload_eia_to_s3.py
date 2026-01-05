@@ -108,24 +108,20 @@ def upload_directory_to_s3(
         logger.error(f"Local path {local_dir} does not exist.")
         return False
 
-    # Normalize prefix: remove leading/trailing slashes
     prefix = prefix.strip("/")
     failed_uploads = []
     
-    # If it's a file
     if local_path.is_file():
         s3_key = posixpath.join(prefix, local_path.name)
         if not upload_file(s3_client, str(local_path), bucket, s3_key, dry_run, public):
             failed_uploads.append(str(local_path))
             
-    # If it's a directory (Zarr)
     elif local_path.is_dir():
         for root, _, files in os.walk(local_path):
             for file in files:
                 full_path = Path(root) / file
                 relative_path = full_path.relative_to(local_path)
                 
-                # Ensure forward slashes for S3 key
                 relative_path_str = str(relative_path).replace(os.sep, "/")
                 s3_key = posixpath.join(prefix, local_path.name, relative_path_str)
                 
@@ -134,7 +130,7 @@ def upload_directory_to_s3(
     
     if failed_uploads:
         logger.error(f"❌ Failed to upload {len(failed_uploads)} files:")
-        for f in failed_uploads[:10]: # Log first 10
+        for f in failed_uploads[:10]:
             logger.error(f"  - {f}")
         if len(failed_uploads) > 10:
             logger.error(f"  ... and {len(failed_uploads) - 10} more.")

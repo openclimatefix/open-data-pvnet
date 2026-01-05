@@ -56,7 +56,6 @@ def main():
 
         logger.info(f"Fetched {len(df)} rows.")
 
-        # BA Centroids (Approximate)
         ba_centroids = {
             'CISO': {'latitude': 37.0, 'longitude': -120.0},
             'ERCO': {'latitude': 31.0, 'longitude': -99.0},
@@ -67,40 +66,24 @@ def main():
             'SWPP': {'latitude': 38.0, 'longitude': -98.0},
         }
 
-        # Add coordinates
         df["latitude"] = df["ba_code"].map(lambda x: ba_centroids.get(x, {}).get('latitude', np.nan))
         df["longitude"] = df["ba_code"].map(lambda x: ba_centroids.get(x, {}).get('longitude', np.nan))
 
-        # Ensure timestamp is datetime
         df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
+        df["timestamp"] = df["timestamp"].dt.tz_convert(None)
         
-        # Ensure timestamp is timezone-naive UTC
-        if "timestamp" in df.columns:
-            df["timestamp"] = pd.to_datetime(df["timestamp"]).dt.tz_convert(None)
-        
-        # Set index
         df = df.set_index(["timestamp", "ba_code"])
         
-        # Convert to xarray Dataset
         ds = xr.Dataset.from_dataframe(df)
-
-        # Ensure timestamp is timezone-naive UTC for Zarr compatibility
-        if "timestamp" in ds.coords:
-            ds.coords["timestamp"] = pd.to_datetime(ds.coords["timestamp"].values).tz_convert(None)
         
-        # Ensure output directory exists
         output_path = args.output
         os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
         
         if output_path.endswith(".zarr"):
-            # Save to Zarr
             if os.path.exists(output_path):
-                # ... (append logic if needed, but for now overwrite or fail)
                 pass
             ds.to_zarr(output_path, mode="w", consolidated=True)
         else:
-            # For NetCDF, handling MultiIndex might be tricky or supported depending on xarray version
-            # Resetting index might be safer for basic NetCDF viewers, but pvnet might expect dims
             ds.to_netcdf(output_path)
             
         logger.info(f"Data successfully stored in {output_path}")
