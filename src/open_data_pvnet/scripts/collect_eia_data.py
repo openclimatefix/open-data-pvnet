@@ -72,26 +72,39 @@ def main():
         df["longitude"] = df["ba_code"].map(lambda x: ba_centroids.get(x, {}).get('longitude', np.nan))
 
         # Ensure timestamp is datetime
-        df["timestamp"] = pd.to_datetime(df["timestamp"])
+        df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
+        
+        # Ensure timestamp is timezone-naive UTC
+        if "timestamp" in df.columns:
+            df["timestamp"] = pd.to_datetime(df["timestamp"]).dt.tz_convert(None)
         
         # Set index
         df = df.set_index(["timestamp", "ba_code"])
         
-        # Convert to xarray
+        # Convert to xarray Dataset
         ds = xr.Dataset.from_dataframe(df)
+
+        # Ensure timestamp is timezone-naive UTC for Zarr compatibility
+        if "timestamp" in ds.coords:
+            ds.coords["timestamp"] = pd.to_datetime(ds.coords["timestamp"].values).tz_convert(None)
         
         # Ensure output directory exists
         output_path = args.output
         os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
         
         if output_path.endswith(".zarr"):
-            ds.to_zarr(output_path, mode="w")
+            # Save to Zarr
+            if os.path.exists(output_path):
+                # ... (append logic if needed, but for now overwrite or fail)
+                pass
+            ds.to_zarr(output_path, mode="w", consolidated=True)
         else:
             # For NetCDF, handling MultiIndex might be tricky or supported depending on xarray version
             # Resetting index might be safer for basic NetCDF viewers, but pvnet might expect dims
             ds.to_netcdf(output_path)
             
         logger.info(f"Data successfully stored in {output_path}")
+        logger.info(f"Note: For ocf-data-sampler compatibility, run preprocess_eia_for_sampler.py on this file")
 
     except Exception as e:
         logger.error(f"Failed to collect data: {e}")
