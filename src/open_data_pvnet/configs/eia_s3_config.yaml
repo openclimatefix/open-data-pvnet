@@ -1,0 +1,6 @@
+s3:
+  bucket: "ocf-open-data-pvnet"
+  prefix: "data/us/eia"
+  region: "us-east-1"
+  versioning: true
+  public: true

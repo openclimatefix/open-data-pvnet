@@ -211,6 +211,24 @@ ds = xr.open_zarr(s3.get_mapper(dataset_path), consolidated=True)
 print(ds)
 ```
 
+6. **Accessing US EIA Data from S3**
+The US EIA solar generation data is stored in the S3 bucket `s3://ocf-open-data-pvnet/data/us/eia/`. Similar to GFS data, it can be accessed directly using `xarray` and `s3fs`.
+
+```python
+import xarray as xr
+import s3fs
+
+# Create an S3 filesystem object (Public Access)
+s3 = s3fs.S3FileSystem(anon=True)
+
+# Open the US EIA dataset (Latest Version)
+dataset_path = 's3://ocf-open-data-pvnet/data/us/eia/latest/target_eia_data_processed.zarr'
+ds = xr.open_zarr(s3.get_mapper(dataset_path), consolidated=True)
+
+# Display the dataset
+print(ds)
+```
+
 ### Best Practices for Using APIs
 
 - **API Keys**: Most APIs require authentication via an API key. Store keys securely using environment variables or secret management tools.

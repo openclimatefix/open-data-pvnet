@@ -50,9 +50,9 @@ def handle_archive(
 
     elif provider == "gfs":
         logger.info(
-            f"Processing GFS data for {year}-{month:02d}-{day:02d} with overwrite={overwrite}"
+            f"Processing GFS {region} data for {year}-{month:02d}-{day:02d} with overwrite={overwrite}"
         )
-        process_gfs_data(year, month, day, hour, overwrite=overwrite)
+        process_gfs_data(year, month, day, hour, region=region, overwrite=overwrite)
     elif provider == "dwd":
         hours = range(24) if hour is None else [hour]
         for hour in hours:
