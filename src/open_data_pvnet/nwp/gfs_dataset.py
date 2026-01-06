@@ -11,9 +11,21 @@ import xarray as xr
 from torch.utils.data import Dataset
 from ocf_data_sampler.config import load_yaml_configuration
 from ocf_data_sampler.torch_datasets.utils.valid_time_periods import find_valid_time_periods
-from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS
 import fsspec
 import numpy as np
+
+
+try:
+    from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS
+    HAS_NWP_STATS = True
+except ImportError:
+    NWP_MEANS = None
+    NWP_STDS = None
+    HAS_NWP_STATS = False
+    logging.warning(
+        "NWP_MEANS and NWP_STDS not available in this version of ocf-data-sampler. "
+        "GFS normalization will be skipped."
+    )
 
 
 # Configure logging
@@ -166,6 +178,10 @@ class GFSDataSampler(Dataset):
             xr.Dataset: The normalized dataset.
         """
         logging.info("Starting normalization...")
+
+        if not HAS_NWP_STATS:
+            return dataset
+
         provider = self.config.input_data.nwp.gfs.provider
         dataset_channels = dataset.channel.values
         mean_channels = NWP_MEANS[provider].channel.values
@@ -198,12 +214,12 @@ class GFSDataSampler(Dataset):
             raise e
 
 
-# # Uncomment the block below to test
-# if __name__ == "__main__":
-#     dataset_path = "s3://ocf-open-data-pvnet/data/gfs.zarr"
-#     config_path = "src/open_data_pvnet/configs/gfs_data_config.yaml"
-#     dataset = open_gfs(dataset_path)
-#     dataset = handle_nan_values(dataset, method="fill", fill_value=0.0)
-#     sampler = GFSDataSampler(dataset, config_filename=config_path, start_time="2023-01-01T00:00:00", end_time="2023-01-30T00:00:00")
-#     sample = sampler[0]
-#     print(sample)
+# Uncomment the block below to test
+if __name__ == "__main__":
+    dataset_path = "s3://ocf-open-data-pvnet/data/gfs.zarr"
+    config_path = "src/open_data_pvnet/configs/gfs_data_config.yaml"
+    dataset = open_gfs(dataset_path)
+    dataset = handle_nan_values(dataset, method="fill", fill_value=0.0)
+    sampler = GFSDataSampler(dataset, config_filename=config_path, start_time="2023-01-01T00:00:00", end_time="2023-01-30T00:00:00")
+    sample = sampler[0]
+    print(sample)
