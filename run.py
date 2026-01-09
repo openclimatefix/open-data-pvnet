@@ -39,7 +39,7 @@ if "WANDB_RUN_ID" not in os.environ:
 
 
 @hydra.main(
-    config_path="src/open_data_pvnet/configs/PVNet_configs",
+    config_path="src/open_data_pvnet/uk_gfs_configs/PVNet_configs",
     config_name="config.yaml",
     version_base="1.2",
 )
