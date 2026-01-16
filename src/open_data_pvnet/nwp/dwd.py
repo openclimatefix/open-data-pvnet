@@ -14,7 +14,7 @@ from open_data_pvnet.utils.data_uploader import upload_to_huggingface
 
 logger = logging.getLogger(__name__)
 
-CONFIG_PATH = PROJECT_BASE / "src/open_data_pvnet/uk_gfs_configs/dwd_data_config.yaml"
+CONFIG_PATH = PROJECT_BASE / "src/open_data_pvnet/configs/dwd_data_config.yaml"
 
 class DWDHTMLParser(HTMLParser):
     def __init__(self):
