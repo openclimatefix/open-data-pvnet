@@ -125,7 +125,7 @@ def save_samples_with_dataloader(
     pbar.close()
 
 
-@hydra.main(config_path="../configs/PVNet_configs", config_name="config.yaml", version_base="1.2")
+@hydra.main(config_path="../uk_gfs_configs/PVNet_configs", config_name="config.yaml", version_base="1.2")
 def main(config: DictConfig) -> None:
     """Constructs and saves validation and training samples."""
     config_dm = config.datamodule

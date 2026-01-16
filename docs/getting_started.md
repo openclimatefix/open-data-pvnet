@@ -727,20 +727,20 @@ Common error messages and their solutions:
 ## Running PVNet Model
 
 1. Update configuration file
-  Go to src/open_data_pvnet/configs/PVNet_configs/datamodule/streamed_batches.yaml
+  Go to src/open_data_pvnet/uk_gfs_configs/PVNet_configs/datamodule/streamed_batches.yaml
 
   Change values if desired (increase at your discretion):
   num_train_samples: 5
   num_val_samples: 5
 
-2. Update src/open_data_pvnet/configs/PVNet_configs/datamodule/premade_batches.yaml
-  Change this line to configuration: <your_directory...open-data-pvnet/src/open_data_pvnet/configs/PVNet_configs/datamodule/configuration/example_configuration.yaml>
+2. Update src/open_data_pvnet/uk_gfs_configs/PVNet_configs/datamodule/premade_batches.yaml
+  Change this line to configuration: <your_directory...open-data-pvnet/src/open_data_pvnet/uk_gfs_configs/PVNet_configs/datamodule/configuration/example_configuration.yaml>
 
-3. Update src/open_data_pvnet/configs/PVNet_configs/config.yaml
+3. Update src/open_data_pvnet/uk_gfs_configs/PVNet_configs/config.yaml
   Change the line to - datamodule: premade_batches.yaml
 
 4. Open a Weights & Biases Account https://wandb.ai/
-  Go to src/open_data_pvnet/configs/PVNet_configs/logger/wandb.yaml
+  Go to src/open_data_pvnet/uk_gfs_configs/PVNet_configs/logger/wandb.yaml
   Change to project: "GFS_TEST_RUN"
   Change to save_dir: "GFS_TEST_RUN"
 

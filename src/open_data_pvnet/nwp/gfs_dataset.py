@@ -201,7 +201,7 @@ class GFSDataSampler(Dataset):
 # # Uncomment the block below to test
 # if __name__ == "__main__":
 #     dataset_path = "s3://ocf-open-data-pvnet/data/gfs.zarr"
-#     config_path = "src/open_data_pvnet/configs/gfs_data_config.yaml"
+#     config_path = "src/open_data_pvnet/uk_gfs_configs/gfs_data_config.yaml"
 #     dataset = open_gfs(dataset_path)
 #     dataset = handle_nan_values(dataset, method="fill", fill_value=0.0)
 #     sampler = GFSDataSampler(dataset, config_filename=config_path, start_time="2023-01-01T00:00:00", end_time="2023-01-30T00:00:00")
