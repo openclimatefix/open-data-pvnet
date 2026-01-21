@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import Mock
 from pathlib import Path
 
-from open_data_pvnet.nwp.dwd import (
+from open_data_pvnet.scripts.nwp_data.dwd import (
     generate_variable_url,
     fetch_dwd_data,
     process_dwd_data,
@@ -36,9 +36,9 @@ def test_generate_variable_url():
 def test_fetch_dwd_data_success(mocker, mock_config, tmp_path):
     """Test successful fetching of DWD data."""
     # Setup mocks
-    mocker.patch("open_data_pvnet.nwp.dwd.PROJECT_BASE", str(tmp_path))
-    mocker.patch("open_data_pvnet.nwp.dwd.CONFIG_PATH", "test_config.yaml")
-    mocker.patch("open_data_pvnet.nwp.dwd.load_config", return_value=mock_config)
+    mocker.patch("open_data_pvnet.scripts.nwp_data.dwd.PROJECT_BASE", str(tmp_path))
+    mocker.patch("open_data_pvnet.scripts.nwp_data.dwd.CONFIG_PATH", "test_config.yaml")
+    mocker.patch("open_data_pvnet.scripts.nwp_data.dwd.load_config", return_value=mock_config)
 
     # Mock HTML content
     html_content = b"""
@@ -76,9 +76,9 @@ def test_fetch_dwd_data_success(mocker, mock_config, tmp_path):
 def test_fetch_dwd_data_no_files(mocker, mock_config, tmp_path):
     """Test fetching DWD data when no files are available."""
     # Setup mocks
-    mocker.patch("open_data_pvnet.nwp.dwd.PROJECT_BASE", str(tmp_path))
-    mocker.patch("open_data_pvnet.nwp.dwd.CONFIG_PATH", "test_config.yaml")
-    mocker.patch("open_data_pvnet.nwp.dwd.load_config", return_value=mock_config)
+    mocker.patch("open_data_pvnet.scripts.nwp_data.dwd.PROJECT_BASE", str(tmp_path))
+    mocker.patch("open_data_pvnet.scripts.nwp_data.dwd.CONFIG_PATH", "test_config.yaml")
+    mocker.patch("open_data_pvnet.scripts.nwp_data.dwd.load_config", return_value=mock_config)
 
     # Mock empty HTML response
     mock_head = mocker.patch("requests.head")
@@ -94,10 +94,10 @@ def test_fetch_dwd_data_no_files(mocker, mock_config, tmp_path):
 def test_process_dwd_data_success(mocker, mock_config, tmp_path):
     """Test successful processing of DWD data."""
     # Setup mocks
-    mocker.patch("open_data_pvnet.nwp.dwd.PROJECT_BASE", str(tmp_path))
-    mocker.patch("open_data_pvnet.nwp.dwd.CONFIG_PATH", "test_config.yaml")
-    mocker.patch("open_data_pvnet.nwp.dwd.load_config", return_value=mock_config)
-    mock_fetch = mocker.patch("open_data_pvnet.nwp.dwd.fetch_dwd_data", return_value=3)
+    mocker.patch("open_data_pvnet.scripts.nwp_data.dwd.PROJECT_BASE", str(tmp_path))
+    mocker.patch("open_data_pvnet.scripts.nwp_data.dwd.CONFIG_PATH", "test_config.yaml")
+    mocker.patch("open_data_pvnet.scripts.nwp_data.dwd.load_config", return_value=mock_config)
+    mock_fetch = mocker.patch("open_data_pvnet.scripts.nwp_data.dwd.fetch_dwd_data", return_value=3)
 
     # Mock xarray operations
     mock_ds = mocker.MagicMock()
@@ -129,8 +129,8 @@ def test_process_dwd_data_success(mocker, mock_config, tmp_path):
 
 def test_process_dwd_data_no_files(mocker, mock_config):
     """Test processing when no files are downloaded."""
-    mocker.patch("open_data_pvnet.nwp.dwd.load_config", return_value=mock_config)
-    mock_fetch = mocker.patch("open_data_pvnet.nwp.dwd.fetch_dwd_data", return_value=0)
+    mocker.patch("open_data_pvnet.scripts.nwp_data.dwd.load_config", return_value=mock_config)
+    mock_fetch = mocker.patch("open_data_pvnet.scripts.nwp_data.dwd.fetch_dwd_data", return_value=0)
 
     process_dwd_data(2023, 1, 1, 0)
 

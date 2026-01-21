@@ -1,8 +1,8 @@
 import logging
 from typing import Optional
-from open_data_pvnet.nwp.met_office import process_met_office_data
-from open_data_pvnet.nwp.gfs import process_gfs_data
-from open_data_pvnet.nwp.dwd import process_dwd_data
+from open_data_pvnet.scripts.nwp_data.met_office import process_met_office_data
+from open_data_pvnet.scripts.nwp_data.gfs import process_gfs_data
+from open_data_pvnet.scripts.nwp_data.dwd import process_dwd_data
 
 logger = logging.getLogger(__name__)
 

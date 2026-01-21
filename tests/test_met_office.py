@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import Mock
 
-from open_data_pvnet.nwp.met_office import (
+from open_data_pvnet.scripts.nwp_data.met_office import (
     generate_prefix,
     fetch_met_office_data,
     process_met_office_data,
@@ -36,17 +36,17 @@ def test_generate_prefix_global():
 
 def test_process_met_office_data_success(mocker, mock_config, tmp_path):
     # Setup mocks
-    mocker.patch("open_data_pvnet.nwp.met_office.PROJECT_BASE", str(tmp_path))
-    mocker.patch("open_data_pvnet.nwp.met_office.CONFIG_PATHS", {"uk": "test_config.yaml"})
-    mocker.patch("open_data_pvnet.nwp.met_office.load_config", return_value=mock_config)
+    mocker.patch("open_data_pvnet.scripts.nwp_data.met_office.PROJECT_BASE", str(tmp_path))
+    mocker.patch("open_data_pvnet.scripts.nwp_data.met_office.CONFIG_PATHS", {"uk": "test_config.yaml"})
+    mocker.patch("open_data_pvnet.scripts.nwp_data.met_office.load_config", return_value=mock_config)
     mock_fetch = mocker.patch(
-        "open_data_pvnet.nwp.met_office.fetch_met_office_data", return_value=3
+        "open_data_pvnet.scripts.nwp_data.met_office.fetch_met_office_data", return_value=3
     )
     mock_convert = mocker.patch(
-        "open_data_pvnet.nwp.met_office.convert_nc_to_zarr", return_value=(3, 1000)
+        "open_data_pvnet.scripts.nwp_data.met_office.convert_nc_to_zarr", return_value=(3, 1000)
     )
-    mock_upload = mocker.patch("open_data_pvnet.nwp.met_office.upload_to_huggingface")
-    mock_rmtree = mocker.patch("open_data_pvnet.nwp.met_office.shutil.rmtree")
+    mock_upload = mocker.patch("open_data_pvnet.scripts.nwp_data.met_office.upload_to_huggingface")
+    mock_rmtree = mocker.patch("open_data_pvnet.scripts.nwp_data.met_office.shutil.rmtree")
 
     # Call function with default archive_type
     process_met_office_data(2023, 12, 25, 0, "uk", overwrite=False)
@@ -68,17 +68,17 @@ def test_process_met_office_data_success(mocker, mock_config, tmp_path):
 
 def test_process_met_office_data_with_tar(mocker, mock_config, tmp_path):
     # Setup mocks
-    mocker.patch("open_data_pvnet.nwp.met_office.PROJECT_BASE", str(tmp_path))
-    mocker.patch("open_data_pvnet.nwp.met_office.CONFIG_PATHS", {"uk": "test_config.yaml"})
-    mocker.patch("open_data_pvnet.nwp.met_office.load_config", return_value=mock_config)
+    mocker.patch("open_data_pvnet.scripts.nwp_data.met_office.PROJECT_BASE", str(tmp_path))
+    mocker.patch("open_data_pvnet.scripts.nwp_data.met_office.CONFIG_PATHS", {"uk": "test_config.yaml"})
+    mocker.patch("open_data_pvnet.scripts.nwp_data.met_office.load_config", return_value=mock_config)
     mock_fetch = mocker.patch(
-        "open_data_pvnet.nwp.met_office.fetch_met_office_data", return_value=3
+        "open_data_pvnet.scripts.nwp_data.met_office.fetch_met_office_data", return_value=3
     )
     mock_convert = mocker.patch(
-        "open_data_pvnet.nwp.met_office.convert_nc_to_zarr", return_value=(3, 1000)
+        "open_data_pvnet.scripts.nwp_data.met_office.convert_nc_to_zarr", return_value=(3, 1000)
     )
-    mock_upload = mocker.patch("open_data_pvnet.nwp.met_office.upload_to_huggingface")
-    mock_rmtree = mocker.patch("open_data_pvnet.nwp.met_office.shutil.rmtree")
+    mock_upload = mocker.patch("open_data_pvnet.scripts.nwp_data.met_office.upload_to_huggingface")
+    mock_rmtree = mocker.patch("open_data_pvnet.scripts.nwp_data.met_office.shutil.rmtree")
 
     # Call function with tar archive_type
     process_met_office_data(2023, 12, 25, 0, "uk", overwrite=True, archive_type="tar")
@@ -100,14 +100,14 @@ def test_process_met_office_data_with_tar(mocker, mock_config, tmp_path):
 
 def test_process_met_office_data_no_files(mocker, mock_config, tmp_path):
     # Setup mocks
-    mocker.patch("open_data_pvnet.nwp.met_office.PROJECT_BASE", str(tmp_path))
-    mocker.patch("open_data_pvnet.nwp.met_office.CONFIG_PATHS", {"uk": "test_config.yaml"})
-    mocker.patch("open_data_pvnet.nwp.met_office.load_config", return_value=mock_config)
+    mocker.patch("open_data_pvnet.scripts.nwp_data.met_office.PROJECT_BASE", str(tmp_path))
+    mocker.patch("open_data_pvnet.scripts.nwp_data.met_office.CONFIG_PATHS", {"uk": "test_config.yaml"})
+    mocker.patch("open_data_pvnet.scripts.nwp_data.met_office.load_config", return_value=mock_config)
     mock_fetch = mocker.patch(
-        "open_data_pvnet.nwp.met_office.fetch_met_office_data", return_value=0
+        "open_data_pvnet.scripts.nwp_data.met_office.fetch_met_office_data", return_value=0
     )
-    mock_convert = mocker.patch("open_data_pvnet.nwp.met_office.convert_nc_to_zarr")
-    mock_upload = mocker.patch("open_data_pvnet.nwp.met_office.upload_to_huggingface")
+    mock_convert = mocker.patch("open_data_pvnet.scripts.nwp_data.met_office.convert_nc_to_zarr")
+    mock_upload = mocker.patch("open_data_pvnet.scripts.nwp_data.met_office.upload_to_huggingface")
 
     # Call function
     process_met_office_data(2023, 12, 25, 0, "uk")
@@ -120,10 +120,10 @@ def test_process_met_office_data_no_files(mocker, mock_config, tmp_path):
 
 def test_fetch_met_office_data_success(mocker, mock_config):
     # Setup mocks
-    mocker.patch("open_data_pvnet.nwp.met_office.CONFIG_PATHS", {"uk": "test_config.yaml"})
-    mocker.patch("open_data_pvnet.nwp.met_office.load_config", return_value=mock_config)
+    mocker.patch("open_data_pvnet.scripts.nwp_data.met_office.CONFIG_PATHS", {"uk": "test_config.yaml"})
+    mocker.patch("open_data_pvnet.scripts.nwp_data.met_office.load_config", return_value=mock_config)
     mock_s3 = Mock()
-    mocker.patch("open_data_pvnet.nwp.met_office.boto3.client", return_value=mock_s3)
+    mocker.patch("open_data_pvnet.scripts.nwp_data.met_office.boto3.client", return_value=mock_s3)
 
     # Mock S3 response
     mock_s3.list_objects_v2.return_value = {
@@ -146,10 +146,10 @@ def test_fetch_met_office_data_success(mocker, mock_config):
 
 def test_fetch_met_office_data_no_files(mocker, mock_config):
     # Setup mocks
-    mocker.patch("open_data_pvnet.nwp.met_office.CONFIG_PATHS", {"uk": "test_config.yaml"})
-    mocker.patch("open_data_pvnet.nwp.met_office.load_config", return_value=mock_config)
+    mocker.patch("open_data_pvnet.scripts.nwp_data.met_office.CONFIG_PATHS", {"uk": "test_config.yaml"})
+    mocker.patch("open_data_pvnet.scripts.nwp_data.met_office.load_config", return_value=mock_config)
     mock_s3 = Mock()
-    mocker.patch("open_data_pvnet.nwp.met_office.boto3.client", return_value=mock_s3)
+    mocker.patch("open_data_pvnet.scripts.nwp_data.met_office.boto3.client", return_value=mock_s3)
 
     # Mock empty S3 response
     mock_s3.list_objects_v2.return_value = {}

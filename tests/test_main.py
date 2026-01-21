@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch
-from open_data_pvnet.main import (
+from open_data_pvnet.scripts.nwp_data.main import (
     configure_parser,
     load_env_and_setup_logger,
     main,
@@ -98,23 +98,23 @@ def test_configure_parser():
     assert not args.overwrite
 
 
-@patch("open_data_pvnet.main.load_environment_variables")
-@patch("open_data_pvnet.main.logging.basicConfig")
+@patch("open_data_pvnet.scripts.nwp_data.main.load_environment_variables")
+@patch("open_data_pvnet.scripts.nwp_data.main.logging.basicConfig")
 def test_load_env_and_setup_logger_success(mock_logging, mock_load_env):
     load_env_and_setup_logger()
     mock_load_env.assert_called_once()
     mock_logging.assert_called_once()
 
 
-@patch("open_data_pvnet.main.load_environment_variables")
+@patch("open_data_pvnet.scripts.nwp_data.main.load_environment_variables")
 def test_load_env_and_setup_logger_failure(mock_load_env):
     mock_load_env.side_effect = FileNotFoundError("Config file not found")
     with pytest.raises(FileNotFoundError):
         load_env_and_setup_logger()
 
 
-@patch("open_data_pvnet.main.handle_load")
-@patch("open_data_pvnet.main.load_env_and_setup_logger")
+@patch("open_data_pvnet.scripts.nwp_data.main.handle_load")
+@patch("open_data_pvnet.scripts.nwp_data.main.load_env_and_setup_logger")
 def test_main_metoffice_load(mock_load_env, mock_handle_load):
     # Test metoffice load command
     test_args = [
@@ -148,8 +148,8 @@ def test_main_metoffice_load(mock_load_env, mock_handle_load):
         )
 
 
-@patch("open_data_pvnet.main.print")
-@patch("open_data_pvnet.main.load_env_and_setup_logger")
+@patch("open_data_pvnet.scripts.nwp_data.main.print")
+@patch("open_data_pvnet.scripts.nwp_data.main.load_env_and_setup_logger")
 def test_main_list_providers(mock_load_env, mock_print):
     # Test --list providers
     test_args = ["--list", "providers"]
@@ -158,8 +158,8 @@ def test_main_list_providers(mock_load_env, mock_print):
         assert mock_print.call_count == 4  # One for header + three providers
 
 
-@patch("open_data_pvnet.main.handle_load")
-@patch("open_data_pvnet.main.load_env_and_setup_logger")
+@patch("open_data_pvnet.scripts.nwp_data.main.handle_load")
+@patch("open_data_pvnet.scripts.nwp_data.main.load_env_and_setup_logger")
 def test_main_metoffice_load_remote(mock_load_env, mock_handle_load):
     # Test metoffice load command with remote option
     test_args = [
