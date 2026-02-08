@@ -7,7 +7,8 @@ general:
 
 input_data:
   # India Solar Generation Data (All-India national aggregate)
-  gsp:
+  # Uses 'generation:' (generic PV data) not 'gsp:' (UK-specific Grid Supply Point)
+  generation:
     # Local Zarr path - update to S3 path when uploaded
     zarr_path: "C:/Users/asus vivoBook/Desktop/New folder (2)/pvnet-india-data/processed/india_solar_2024-2025.zarr"
     interval_start_minutes: -60     # 1 hour history

@@ -126,43 +126,96 @@ def main():
     logger.info(f"\nCombined dataset: {len(combined)} rows")
     logger.info(f"Date range: {combined['datetime'].min()} to {combined['datetime'].max()}")
     
-    # Already hourly from the 2024-2025 file
+    # Rename columns to ocf-data-sampler expected format
+    # See: https://github.com/openclimatefix/ocf-data-sampler/blob/main/ocf_data_sampler/load/generation.py
     hourly = combined.copy()
-    hourly = hourly.rename(columns={'datetime': 'datetime_gmt'})
+    hourly = hourly.rename(columns={
+        'datetime': 'time_utc',
+        'solar_generation_mw': 'generation_mw'
+    })
+    
+    # Use location_id instead of region_id (ocf-data-sampler expects location_id)
+    hourly['location_id'] = 0  # 0 = All India aggregate
+    
+    # Add required coordinates for ocf-data-sampler
+    # India center approx: 20°N, 78°E (used for GFS NWP extraction)
+    hourly['longitude'] = 78.0  # India center longitude
+    hourly['latitude'] = 20.0   # India center latitude
+    
+    # Calculate capacity_mwp from peak observed values
+    # India solar installed capacity ~70GW as of 2024
+    # Use 95th percentile of observed values as proxy for capacity
+    solar_capacity_mwp = hourly['generation_mw'].quantile(0.95)
+    hourly['capacity_mwp'] = solar_capacity_mwp
     
     logger.info(f"Hourly dataset: {len(hourly)} rows")
+    logger.info(f"  Estimated capacity: {solar_capacity_mwp:.0f} MWp")
     
-    # Add region_id for PVNet compatibility (0 = All India)
-    hourly['region_id'] = 0
-    
-    # Select only needed columns
-    columns = ['region_id', 'datetime_gmt', 'solar_generation_mw']
-    if 'wind_generation_mw' in hourly.columns:
-        columns.append('wind_generation_mw')
-    if 'demand_mw' in hourly.columns:
-        columns.append('demand_mw')
-    hourly = hourly[columns]
-    
-    # Save CSV
+    # Save CSV with original column names for reference
+    csv_data = hourly.copy()
     csv_path = PROCESSED_DIR / "india_solar_hourly.csv"
-    hourly.to_csv(csv_path, index=False)
+    csv_data.to_csv(csv_path, index=False)
     logger.info(f"Saved CSV: {csv_path}")
     
-    # Save Zarr
-    hourly_indexed = hourly.set_index(['region_id', 'datetime_gmt'])
-    ds = xr.Dataset.from_dataframe(hourly_indexed)
+    # Create xarray Dataset with ocf-data-sampler schema
+    # Dimensions: (time_utc, location_id)
+    # Data Variables: generation_mw, capacity_mwp
+    # Coordinates: time_utc, location_id, longitude, latitude
+    
+    time_utc = pd.to_datetime(hourly['time_utc']).values
+    location_ids = hourly['location_id'].unique()
+    
+    # Create DataArrays
+    generation_mw = xr.DataArray(
+        data=hourly['generation_mw'].values.reshape(1, -1),  # (location, time)
+        dims=['location_id', 'time_utc'],
+        coords={
+            'location_id': ('location_id', location_ids),
+            'time_utc': ('time_utc', time_utc),
+            'longitude': ('location_id', [78.0]),
+            'latitude': ('location_id', [20.0]),
+        }
+    )
+    
+    capacity_mwp = xr.DataArray(
+        data=np.full((1, len(time_utc)), solar_capacity_mwp),  # Same capacity for all times
+        dims=['location_id', 'time_utc'],
+        coords={
+            'location_id': ('location_id', location_ids),
+            'time_utc': ('time_utc', time_utc),
+            'longitude': ('location_id', [78.0]),
+            'latitude': ('location_id', [20.0]),
+        }
+    )
+    
+    ds = xr.Dataset({
+        'generation_mw': generation_mw,
+        'capacity_mwp': capacity_mwp,
+    })
+    
     ds.attrs = {
-        'description': 'India All-India solar generation from Grid-India (POSOCO)',
-        'source': 'Mendeley DOI: 10.17632/y58jknpgs8.2',
+        'description': 'India All-India solar generation for PVNet training',
+        'source': 'Mendeley DOI: 10.17632/y58jknpgs8.2 (Grid-India/POSOCO)',
+        'schema': 'ocf-data-sampler generation format',
         'time_resolution': '1 hour',
-        'date_range': f"{combined['datetime'].min()} to {combined['datetime'].max()}",
+        'location': 'All India aggregate',
+        'date_range': f"{hourly['time_utc'].min()} to {hourly['time_utc'].max()}",
         'created': datetime.now().isoformat()
     }
-    # Skip chunking for simpler export without dask
     
     zarr_path = PROCESSED_DIR / "india_solar_2024-2025.zarr"
     ds.to_zarr(str(zarr_path), mode='w', consolidated=True)
     logger.info(f"Saved Zarr: {zarr_path}")
+    
+    # Verify the schema
+    logger.info("\n=== Zarr Schema Verification ===")
+    logger.info(f"Dimensions: {dict(ds.dims)}")
+    logger.info("Coordinates:")
+    for coord in ds.coords:
+        logger.info(f"  {coord}: {ds.coords[coord].dtype}")
+    logger.info("Data Variables:")
+    for var in ds.data_vars:
+        logger.info(f"  {var}: {ds.data_vars[var].dtype}, dims {ds.data_vars[var].dims}")
     
     # Print summary stats
     logger.info("\n" + "="*60)
