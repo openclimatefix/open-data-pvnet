@@ -37,17 +37,21 @@ def test_india_solar_data():
         logger.info(f"Dimensions: {dict(ds.dims)}")
         
         # Check solar data
-        if 'solar_generation_mw' in ds:
-            solar = ds['solar_generation_mw']
+        if 'generation_mw' in ds:
+            solar = ds['generation_mw']
             logger.info(f"\nSolar Generation (MW):")
             logger.info(f"  Shape: {solar.shape}")
             logger.info(f"  Min: {float(solar.min()):.2f}")
             logger.info(f"  Max: {float(solar.max()):.2f}")
             logger.info(f"  Mean: {float(solar.mean()):.2f}")
         
+        if 'capacity_mwp' in ds:
+             capacity = ds['capacity_mwp']
+             logger.info(f"  Capacity: {float(capacity.max()):.2f} MWp")
+        
         # Check time range
-        if 'datetime_gmt' in ds.dims:
-            times = ds['datetime_gmt'].values
+        if 'time_utc' in ds.coords:
+            times = ds['time_utc'].values
             logger.info(f"\nTime Range:")
             logger.info(f"  Start: {pd.Timestamp(times[0])}")
             logger.info(f"  End: {pd.Timestamp(times[-1])}")
@@ -129,7 +133,7 @@ def test_time_alignment():
     
     try:
         ds_india = xr.open_zarr(str(zarr_path))
-        india_times = pd.DatetimeIndex(ds_india['datetime_gmt'].values)
+        india_times = pd.DatetimeIndex(ds_india['time_utc'].values)
         
         logger.info(f"India Solar Data:")
         logger.info(f"  Start: {india_times.min()}")
