@@ -1,0 +1,6 @@
+region_id,region_name,abbreviation,latitude,longitude,capacity_mw,states
+0,Northern Region,NR,28.6139,77.2090,,Delhi|Haryana|Punjab|Rajasthan|Uttar Pradesh|Uttarakhand|Himachal Pradesh|Jammu & Kashmir
+1,Western Region,WR,19.0760,72.8777,,Maharashtra|Gujarat|Madhya Pradesh|Chhattisgarh|Goa|Daman & Diu
+2,Southern Region,SR,13.0827,80.2707,,Tamil Nadu|Karnataka|Kerala|Andhra Pradesh|Telangana|Puducherry
+3,Eastern Region,ER,22.5726,88.3639,,West Bengal|Bihar|Jharkhand|Odisha|Sikkim
+4,North-Eastern Region,NER,26.1445,91.7362,,Assam|Arunachal Pradesh|Manipur|Meghalaya|Mizoram|Nagaland|Tripura
