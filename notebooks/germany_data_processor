@@ -1,0 +1,161 @@
+"""
+Germany Data Processor - Unified Pipeline
+
+Combines:
+1. SMARD API downloading (from downloading_pv_germany.py)
+2. Zarr/CSV conversion & standardization
+3. Dataset validation (from test_germany_pipeline.py)
+"""
+
+import requests
+import pandas as pd
+import xarray as xr
+import numpy as np
+import time
+from datetime import datetime
+from pathlib import Path
+import warnings
+import shutil
+warnings.filterwarnings('ignore')
+
+# Configuration
+BASE_URL = "https://www.smard.de/app/chart_data"
+FILTER_ID = 4068
+REGION = "DE"
+BASE_DIR = Path(r"") # path to base dir
+OUTPUT_DIR = BASE_DIR / "germany_pv_data"
+# Final Zarr output path
+FINAL_ZARR_PATH = BASE_DIR / "germany_pv_2023.zarr"
+
+START_DATE = "2023-01-01"
+END_DATE = "2024-01-01"
+
+
+def get_timestamps(session, res="quarterhour"):
+    url = f"{BASE_URL}/{FILTER_ID}/{REGION}/index_{res}.json"
+    r = session.get(url)
+    r.raise_for_status()
+    return r.json()["timestamps"]
+
+
+def get_chunk(session, ts, res="quarterhour"):
+    url = f"{BASE_URL}/{FILTER_ID}/{REGION}/{FILTER_ID}_{REGION}_{res}_{ts}.json"
+    r = session.get(url)
+    r.raise_for_status()
+    return r.json().get("series", [])
+
+
+def download_smard_data():
+    """Download solar generation from SMARD API."""
+    print(f"\n--- Downloading SMARD Data ({START_DATE} to {END_DATE}) ---")
+    start_ts = int(datetime.strptime(START_DATE, "%Y-%m-%d").timestamp() * 1000)
+    end_ts = int(datetime.strptime(END_DATE, "%Y-%m-%d").timestamp() * 1000)
+
+    data = []
+    with requests.Session() as s:
+        timestamps = get_timestamps(s)
+        timestamps = [ts for ts in timestamps if start_ts <= ts <= end_ts]
+        print(f"Found {len(timestamps)} chunks to download")
+
+        for i, ts in enumerate(timestamps, 1):
+            if i % 10 == 0:
+                print(f"Progress: {i}/{len(timestamps)}")
+            try:
+                chunk = get_chunk(s, ts)
+                if chunk:
+                    data.extend(chunk)
+                time.sleep(0.1)
+            except Exception as e:
+                print(f"Error at {ts}: {e}")
+
+    df = pd.DataFrame(data, columns=["timestamp_ms", "generation_mw"])
+    df["datetime_gmt"] = pd.to_datetime(df["timestamp_ms"], unit="ms", utc=True)
+    df = df.drop_duplicates(subset="timestamp_ms").sort_values("datetime_gmt")
+    return df.dropna(subset=["generation_mw"])
+
+
+def process_to_zarr(df, region_id=0):
+    """Process dataframe to PVNet standard Zarr."""
+    print(f"\n--- Processing Data (Region {region_id}) ---")
+    
+    # 30-min resample
+    df = df.set_index('datetime_gmt').resample('30min').mean().reset_index()
+    df['generation_mw'] = df['generation_mw'].interpolate()
+    df['capacity_mwp'] = 70000.0  # National capacity approx
+    
+    times = pd.DatetimeIndex(df['datetime_gmt'].values.astype("datetime64[ns]"))
+    
+    ds = xr.Dataset(
+        {
+            "generation_mw": (["time_utc", "location_id"], df['generation_mw'].values.reshape(-1, 1)),
+            "capacity_mwp": (["time_utc", "location_id"], df['capacity_mwp'].values.reshape(-1, 1)),
+        },
+        coords={
+            "time_utc": times,
+            "location_id": np.array([region_id]),
+            "latitude": (["location_id"], np.array([51.1657])),
+            "longitude": (["location_id"], np.array([10.4515])),
+        },
+    )
+    
+    if FINAL_ZARR_PATH.exists():
+        shutil.rmtree(FINAL_ZARR_PATH, ignore_errors=True)
+        
+    ds.to_zarr(FINAL_ZARR_PATH, mode='w', consolidated=True)
+    print(f"Saved Final Zarr: {FINAL_ZARR_PATH}")
+    
+    return ds
+
+
+def validate_pipeline(ds):
+    """Basic validation of the generated dataset and NWP alignment."""
+    print("\n--- Validating Pipeline ---")
+    
+    # 1. Solar Data Check
+    print(f"Solar Time Range: {ds.time_utc.values[0]} to {ds.time_utc.values[-1]}")
+    gen = ds.generation_mw.values
+    print(f"Solar Stats: Mean={np.nanmean(gen):.2f}, Max={np.nanmax(gen):.2f}")
+    
+    # 2. GFS Alignment Check
+    if GFS_ZARR_PATH.exists():
+        ds_gfs = xr.open_zarr(str(GFS_ZARR_PATH))
+        gfs_time_dim = 'init_time' if 'init_time' in ds_gfs.dims else 'step' # Fallback
+        if 'init_time' in ds_gfs.dims:
+            gfs_times = pd.DatetimeIndex(ds_gfs['init_time'].values)
+            pv_times = pd.DatetimeIndex(ds['time_utc'].values)
+            
+            overlap_start = max(pv_times.min(), gfs_times.min())
+            overlap_end = min(pv_times.max(), gfs_times.max())
+            
+            if overlap_start < overlap_end:
+                print(f"✅ GFS Overlap Found: {overlap_start} to {overlap_end}")
+            else:
+                print("⚠️ No GFS time overlap found.")
+    else:
+        print("⏭️ GFS Zarr not found locally, skipping alignment check.")
+    
+    print("✅ Validation Complete")
+
+
+def main():
+    print("=" * 50)
+    print("GERMANY PVNET CONSOLIDATED PROCESSOR")
+    print("=" * 50)
+    
+    # 1. Download
+    df = download_smard_data()
+    if df.empty:
+        print("❌ Download failed or no data.")
+        return
+        
+    # 2. Process
+    ds = process_to_zarr(df)
+    
+    # 3. Validate
+    validate_pipeline(ds)
+    
+    print("\nDone!")
+
+
+if __name__ == "__main__":
+    main()
