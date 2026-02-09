@@ -33,14 +33,9 @@ input_data:
       public: true
       
       # Spatial sampling (small patch around site)
+      # Note: ocf-data-sampler uses generation coordinates (lon/lat) for spatial sampling
       image_size_pixels_height: 4
       image_size_pixels_width: 4
-      
-      # India bounding box for filtering
-      # Using approximate center of India for national data
-      # 20°N 78°E (approximate center of India)
-      latitude_center: 20.0
-      longitude_center: 78.0
       
       # Weather channels for solar prediction
       channels:
@@ -109,8 +104,3 @@ input_data:
     interval_start_minutes: -60
     interval_end_minutes: 480
     time_resolution_minutes: 60
-
-# Model and training settings
-model:
-  forecast_horizon_hours: 8
-  history_hours: 1
