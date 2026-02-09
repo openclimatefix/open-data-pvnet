@@ -89,12 +89,42 @@ def download_grib(date, cycle, fhour):
 
 
 def process_grib(grib_path):
+    """Open GRIB file and handle multiple levels/variables."""
+    datasets = []
+    
+    # Define filtration for different levels
+    filters = [
+        {"typeOfLevel": "surface"},
+        {"typeOfLevel": "heightAboveGround", "level": 2},
+        {"typeOfLevel": "heightAboveGround", "level": 10},
+        {"typeOfLevel": "heightAboveGround", "level": 100},
+        {"typeOfLevel": "entireAtmosphere"},
+    ]
+    
+    for f in filters:
+        try:
+            ds = xr.open_dataset(
+                grib_path, 
+                engine="cfgrib", 
+                backend_kwargs={'filter_by_keys': f}
+            )
+            # Drop coordinates that might conflict when merging different levels
+            for coord in ["heightAboveGround", "entireAtmosphere", "surface"]:
+                if coord in ds.coords:
+                    ds = ds.drop_vars(coord)
+            datasets.append(ds)
+        except Exception:
+            continue
+            
+    if not datasets:
+        return None
+        
     try:
-        ds = xr.open_dataset(grib_path, engine="cfgrib")
-        data = ds.sel(latitude=slice(LAT_MAX, LAT_MIN), longitude=slice(LON_MIN, LON_MAX))
-        ds.close()
+        combined = xr.merge(datasets, compat="no_conflicts")
+        data = combined.sel(latitude=slice(LAT_MAX, LAT_MIN), longitude=slice(LON_MIN, LON_MAX))
         return data
-    except:
+    except Exception as e:
+        print(f"Error merging datasets for {grib_path}: {e}")
         return None
 
 
@@ -113,16 +143,20 @@ def main():
             init_time = current.replace(hour=cycle)
             
             for fhour in FORECAST_HOURS:
+                print(f"--- Cycle {cycle:02d} F{fhour:03d} ---")
                 grib_path = download_grib(current, cycle, fhour)
                 
                 if grib_path:
                     data = process_grib(grib_path)
                     if data:
+                        print(f"Success: Processed {grib_path.name}")
                         all_data[(init_time, fhour)] = data
                         if init_time not in init_times:
                             init_times.append(init_time)
                         if fhour not in steps:
                             steps.append(fhour)
+                    else:
+                        print(f"Warning: Failed to process {grib_path.name}")
         
         current += timedelta(days=1)
     
