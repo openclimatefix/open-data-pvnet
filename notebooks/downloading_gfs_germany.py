@@ -1,160 +1,178 @@
-import shutil
-import time
-from datetime import datetime
-from pathlib import Path
-from typing import List, Dict, Optional, Union, Tuple
-
-import numpy as np
-import pandas as pd
+import os
 import requests
 import xarray as xr
+import numpy as np
+import pandas as pd
+import time
+from datetime import datetime, timedelta
+from pathlib import Path
 
-# ---------------- CONFIGURATION ----------------
-BASE_URL = "https://www.smard.de/app/chart_data"
-FILTER_ID = 4068
-REGION = "DE"
-OUTPUT_DIR = Path("./germany_pv_data")
-OUTPUT_ZARR = Path("./gsp_2023.zarr")
+LAT_MIN, LAT_MAX = 47, 55
+LON_MIN, LON_MAX = 6, 15
 
-START_DATE = "2023-01-01"
-END_DATE = "2023-12-31"
+VARIABLES = {
+    "dswrf": "DSWRF:surface",
+    "t": "TMP:2 m above ground",
+    "r": "RH:2 m above ground",
+    "tcc": "TCDC:entire atmosphere",
+    "u10": "UGRD:10 m above ground",
+    "v10": "VGRD:10 m above ground",
+}
 
-GSP_ID = "germany_total"
-CAPACITY_MWP = np.nan
-INSTALLED_CAPACITY_MWP = np.nan
-RESOLUTION = "quarterhour"
-REQUEST_SLEEP = 0.25
-
+OUTPUT_DIR = Path("./germany_gfs_data")
 OUTPUT_DIR.mkdir(exist_ok=True)
 
+START_DATE = datetime(2023, 1, 1)
+END_DATE = datetime(2023, 1, 1)
+CYCLES = [0, 6, 12, 18]
+FORECAST_HOURS = [0, 3, 6, 9, 12, 15, 18, 21, 24]
 
-def get_timestamps(filter_id: int, region: str, resolution: str) -> List[int]:
-    url = f"{BASE_URL}/{filter_id}/{region}/index_{resolution}.json"
-    response = requests.get(url, timeout=30)
-    response.raise_for_status()
-    data = response.json()
+
+def get_byte_ranges(idx_url):
+    r = requests.get(idx_url)
+    if r.status_code != 200:
+        return None
     
-    if isinstance(data, dict) and "timestamps" in data:
-        return data["timestamps"]
-    return data
+    lines = r.text.splitlines()
+    records = []
+    
+    for i, line in enumerate(lines):
+        parts = line.split(":")
+        if len(parts) < 5:
+            continue
+        
+        offset = int(parts[1])
+        var_lvl = f"{parts[3]}:{parts[4]}"
+        next_offset = int(lines[i+1].split(":")[1]) if i+1 < len(lines) else ""
+        
+        records.append({
+            "offset": offset,
+            "var_lvl": var_lvl,
+            "next": next_offset
+        })
+    
+    return records
 
 
-def get_chunk(filter_id: int, region: str, resolution: str, timestamp: int) -> Optional[List[Union[int, float]]]:
-    url = f"{BASE_URL}/{filter_id}/{region}/{filter_id}_{region}_{resolution}_{timestamp}.json"
-    response = requests.get(url, timeout=30)
-    response.raise_for_status()
-    data = response.json()
-
-    if isinstance(data, dict) and "series" in data:
-        return data["series"]
-    if isinstance(data, list):
-        return data
-    return None
-
-
-def download_smard_data(start: str, end: str, resolution: str) -> pd.DataFrame:
-    timestamps = get_timestamps(FILTER_ID, REGION, resolution)
-    if not timestamps:
-        raise RuntimeError("No timestamps index returned from SMARD.")
-
-    start_ts = int(pd.to_datetime(start).timestamp() * 1000)
-    end_ts = int(pd.to_datetime(end).timestamp() * 1000)
-    buckets = [ts for ts in timestamps if start_ts <= ts <= end_ts]
-
-    print(f"Found {len(buckets)} buckets in date range.")
-
-    rows = []
-    for ts in buckets:
-        try:
-            chunk = get_chunk(FILTER_ID, REGION, resolution, ts)
-            if not chunk:
-                continue
-
-            for entry in chunk:
-                if isinstance(entry, (list, tuple)) and len(entry) >= 2:
-                    ts_ms = int(entry[0])
-                    val = entry[1]
-                elif isinstance(entry, dict):
-                    ts_ms = int(entry.get("timestamp_ms", entry.get("timestamp", 0)))
-                    val = entry.get("value") or entry.get("generation_mw") or entry.get("generation")
-                else:
-                    continue
-
-                try:
-                    v = float(val) if val is not None else np.nan
-                except (ValueError, TypeError):
-                    v = np.nan
-                
-                rows.append((ts_ms, v))
-                
-            time.sleep(REQUEST_SLEEP)
+def download_grib(date, cycle, fhour):
+    date_str = date.strftime("%Y%m%d")
+    cycle_str = f"{cycle:02d}"
+    fhour_str = f"{fhour:03d}"
+    
+    base_url = f"https://noaa-gfs-bdp-pds.s3.amazonaws.com/gfs.{date_str}/{cycle_str}/atmos/gfs.t{cycle_str}z.pgrb2.0p25.f{fhour_str}"
+    idx_url = base_url + ".idx"
+    filename = OUTPUT_DIR / f"gfs_{date_str}_{cycle_str}z_f{fhour_str}.grib2"
+    
+    if filename.exists() and filename.stat().st_size > 1000:
+        return filename
+    
+    records = get_byte_ranges(idx_url)
+    if not records:
+        return None
+    
+    print(f"Downloading {filename.name}...")
+    
+    with open(filename, "wb") as f:
+        for var_name, var_pattern in VARIABLES.items():
+            record = next((r for r in records if r["var_lvl"] == var_pattern), None)
             
-        except requests.RequestException as e:
-            print(f"Failed to fetch bucket {ts}: {e}")
-            time.sleep(REQUEST_SLEEP)
+            if record:
+                range_header = f"bytes={record['offset']}-{record['next']-1 if record['next'] else ''}"
+                r = requests.get(base_url, headers={"Range": range_header}, timeout=30)
+                r.raise_for_status()
+                
+                for chunk in r.iter_content(chunk_size=1024*1024):
+                    if chunk:
+                        f.write(chunk)
+    
+    return filename
 
-    if not rows:
-        raise RuntimeError("No data downloaded for the specified range.")
 
-    df = pd.DataFrame(rows, columns=["timestamp_ms", "generation_mw"])
-    df = df.drop_duplicates("timestamp_ms").sort_values("timestamp_ms").reset_index(drop=True)
-    df["datetime_gmt"] = pd.to_datetime(df["timestamp_ms"], unit="ms", utc=True)
-    return df
+def process_grib(grib_path):
+    try:
+        ds = xr.open_dataset(grib_path, engine="cfgrib")
+        data = ds.sel(latitude=slice(LAT_MAX, LAT_MIN), longitude=slice(LON_MIN, LON_MAX))
+        ds.close()
+        return data
+    except:
+        return None
 
-def save_to_zarr(df: pd.DataFrame, output_path: Path) -> xr.Dataset:
-    n_rows = len(df)
-    print(f"Processing {n_rows} rows for Zarr output...")
 
-    # Ensure sorted by time
-    df = df.sort_values("datetime_gmt")
+def main():
+    print("=" * 50)
+    print("GFS WEATHER DATA DOWNLOADER")
+    print("=" * 50)
     
-    # Prepare coordinates
-    # UK data structure: coords=(gsp_id, datetime_gmt)
-    times = df["datetime_gmt"].values # datetime64[ns]
-    gsp_ids = np.array([GSP_ID], dtype="U20")
+    all_data = {}
+    init_times = []
+    steps = []
     
-    n_times = len(times)
-    n_gsp = len(gsp_ids)
+    current = START_DATE
+    while current <= END_DATE:
+        for cycle in CYCLES:
+            init_time = current.replace(hour=cycle)
+            
+            for fhour in FORECAST_HOURS:
+                grib_path = download_grib(current, cycle, fhour)
+                
+                if grib_path:
+                    data = process_grib(grib_path)
+                    if data:
+                        all_data[(init_time, fhour)] = data
+                        if init_time not in init_times:
+                            init_times.append(init_time)
+                        if fhour not in steps:
+                            steps.append(fhour)
+        
+        current += timedelta(days=1)
     
-    # Values reshape to (gsp_id, datetime_gmt) -> (1, ntimes)
-    gen_values = df["generation_mw"].astype(np.float32).fillna(np.nan).values.reshape(n_gsp, n_times)
+    if not all_data:
+        print("No data downloaded")
+        return
     
-    cap_val = np.float32(CAPACITY_MWP) if not np.isnan(CAPACITY_MWP) else np.nan
-    inst_val = np.float32(INSTALLED_CAPACITY_MWP) if not np.isnan(INSTALLED_CAPACITY_MWP) else np.nan
+    init_times = sorted(init_times)
+    steps = sorted(steps)
     
-    cap_arr = np.full((n_gsp, n_times), cap_val, dtype=np.float32)
-    inst_arr = np.full((n_gsp, n_times), inst_val, dtype=np.float32)
+    # Assembly
+    sample_key = list(all_data.keys())[0]
+    lat_size = len(all_data[sample_key].latitude)
+    lon_size = len(all_data[sample_key].longitude)
+    channels = list(VARIABLES.keys())
     
+    data_array = np.full((len(init_times), len(steps), len(channels), lat_size, lon_size), np.nan, dtype=np.float32)
+    for (it, fh), data in all_data.items():
+        it_idx = init_times.index(it)
+        fh_idx = steps.index(fh)
+        for i, ch in enumerate(channels):
+            # Map the variable name from GFS to our channels
+            grib_var = VARIABLES[ch].split(":")[0].lower()
+            # Find the actual variable name in xarray (sometimes it's different)
+            for var in data.data_vars:
+                if var.lower() == grib_var:
+                    data_array[it_idx, fh_idx, i] = data[var].values
+                    break
+
     ds = xr.Dataset(
-        data_vars={
-            "capacity_mwp": (["gsp_id", "datetime_gmt"], cap_arr),
-            "generation_mw": (["gsp_id", "datetime_gmt"], gen_values),
-            "installedcapacity_mwp": (["gsp_id", "datetime_gmt"], inst_arr),
-        },
+        {ch: (["init_time_utc", "step", "latitude", "longitude"], data_array[:, :, i]) for i, ch in enumerate(channels)},
         coords={
-            "gsp_id": gsp_ids,
-            "datetime_gmt": times,
-        },
-        attrs={
-            "description": "PV generation data from SMARD",
-            "source": "Bundesnetzagentur SMARD",
-            "created": datetime.now().isoformat() + "Z",
-        },
+            "init_time_utc": init_times,
+            "step": [np.timedelta64(h, "h") for h in steps],
+            "latitude": np.linspace(LAT_MAX, LAT_MIN, lat_size),
+            "longitude": np.linspace(LON_MIN, LON_MAX, lon_size),
+        }
     )
 
-    if output_path.exists():
-        shutil.rmtree(output_path)
-
-    ds.to_zarr(str(output_path), mode="w", consolidated=True)
-    print(f"Dataset saved to {output_path}")
-    return ds
-
+    zarr_path = Path(r"c:\Users\SNEH\OneDrive\Desktop\GSOC\PR\Streamed\open-data-pvnet\notebooks\germany_gfs_2023.zarr")
+    print(f"\nSaving to {zarr_path}")
+    
+    # Robust save for Windows
+    if zarr_path.exists():
+        import shutil
+        shutil.rmtree(zarr_path, ignore_errors=True)
+        
+    ds.to_zarr(zarr_path, mode="w", consolidated=True)
+    print("Done!")
 
 
 if __name__ == "__main__":
-    try:
-        data_df = download_smard_data(START_DATE, END_DATE, RESOLUTION)
-        dataset = save_to_zarr(data_df, OUTPUT_ZARR)
-        print(dataset)
-    except Exception as e:
-        print(f"Process failed: {e}")
+    main()
