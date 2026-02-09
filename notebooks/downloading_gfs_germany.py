@@ -162,7 +162,7 @@ def main():
         }
     )
 
-    zarr_path = Path(r"c:\Users\SNEH\OneDrive\Desktop\GSOC\PR\Streamed\open-data-pvnet\notebooks\germany_gfs_2023.zarr")
+    zarr_path = Path(r"")
     print(f"\nSaving to {zarr_path}")
     
     # Robust save for Windows
