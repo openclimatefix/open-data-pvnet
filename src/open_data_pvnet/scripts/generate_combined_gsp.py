@@ -33,12 +33,13 @@ import logging
 
 from src.open_data_pvnet.scripts.fetch_pvlive_data import PVLiveData
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
 
 def main(
     start_year: int = typer.Option(2020, help="Start year for data collection"),
     end_year: int = typer.Option(2025, help="End year for data collection"),
-    output_folder: str = typer.Option("data", help="Output folder for the zarr dataset")
+    output_folder: str = typer.Option("data", help="Output folder for the zarr dataset"),
 ):
     """
     Generate combined GSP data for all GSPs and save as a zarr dataset.
@@ -51,15 +52,15 @@ def main(
     all_dataframes = []
 
     # Changed range to start from 0 to include gsp_id=0
-    for gsp_id in range(0, 319):  
+    for gsp_id in range(0, 319):
         logging.info(f"Processing GSP ID {gsp_id}")
         df = data_source.get_data_between(
             start=range_start,
             end=range_end,
             entity_id=gsp_id,
-            extra_fields="capacity_mwp,installedcapacity_mwp"
+            extra_fields="capacity_mwp,installedcapacity_mwp",
         )
-        
+
         if df is not None and not df.empty:
             # Add gsp_id column to the dataframe
             df["gsp_id"] = gsp_id
@@ -87,7 +88,9 @@ def main(
     xr_pv.to_zarr(output_path, mode="w", consolidated=True)
 
     logging.info(f"Successfully saved combined GSP dataset to {output_path}")
-    logging.info(f"Dataset contains GSPs 0-318 for period {range_start.date()} to {range_end.date()}")
+    logging.info(
+        f"Dataset contains GSPs 0-318 for period {range_start.date()} to {range_end.date()}"
+    )
 
 
 if __name__ == "__main__":

@@ -1,7 +1,6 @@
 from pvlive_api import PVLive
 import logging
 
-
 logger = logging.getLogger(__name__)
 
 
