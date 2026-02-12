@@ -24,14 +24,6 @@ When transitioning back to winter time (e.g. 29 Oct 2023 3:00 to 2:00), data ent
 The converted zarr file is available on huggingface, link:
 https://huggingface.co/datasets/hhhn2/France_PV_data
 
-### Scripts
-| File | Description |
-|------|-------------|
-| `scripts/download_mendeley_india.py` | Dataset download instructions |
-| `scripts/process_india_data.py` | Excel → Zarr conversion |
-| `scripts/test_india_pipeline.py` | Pipeline validation tests |
-| `scripts/train_india_baseline.py` | Solar-only baseline model |
-
 ## Testing
 - Ran process_france_data.py successfully
 - Validated output with inspect_france_training_pipeline.py
@@ -102,3 +94,5 @@ Capacity: 1655.3 MWp, NaN: 0.0%
   Capacity: 1807.9 MWp, NaN: 0.0%
 
 ## Next Steps
+- Make a NOAA GFS pipeline for France
+- Compare with baseline model
