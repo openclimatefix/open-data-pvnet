@@ -25,12 +25,16 @@ logger = logging.getLogger(__name__)
 
 gfs_path = "s3://ocf-open-data-pvnet/data/gfs/v4/2024.zarr"
 
+
 # Load the zarr dataset
 base_dir = os.getcwd()
 parent_3_levels_up = os.path.dirname(os.path.dirname(os.path.dirname(base_dir)))
 output_dir = os.path.join(parent_3_levels_up, "data")
-solar_path = "france_solar_combined.zarr"
+solar_path = os.path.join(parent_3_levels_up, "data", "france_solar_combined.zarr")
 print(f"Loading {solar_path}...\n")
+gfs_path_local = os.path.join(
+    parent_3_levels_up, "data", "gfs_2023.zarr"
+)  # For testing local access if needed
 
 # Define France latitude and longitude bounds
 MIN_LAT, MAX_LAT = 41.5, 51.5
@@ -181,8 +185,10 @@ def test_france_solar_data(zarr_path):
     print("INSPECTION COMPLETE")
     print("=" * 60)
 
+    return True
 
-def test_gfs_data_access():
+
+def test_gfs_data_access(gfs_path):
     """Test accessing GFS NWP data from S3."""
     logger.info("\n" + "=" * 60)
     logger.info("Testing GFS NWP Data Access")
@@ -192,8 +198,8 @@ def test_gfs_data_access():
         logger.info(f"Opening GFS data from: {gfs_path}")
         store = fsspec.get_mapper(gfs_path, anon=True)
 
-        # Open with limited variables to test access
-        ds = xr.open_zarr(store, consolidated=True)
+        # Open with decode_timedelta to suppress warning
+        ds = xr.open_zarr(store, consolidated=True, decode_timedelta=True)
 
         logger.info("GFS Dataset accessed successfully!")
         logger.info(f"Variables: {list(ds.data_vars)[:10]}...")  # First 10
@@ -221,12 +227,18 @@ def test_gfs_data_access():
             logger.warning("GFS dataset does not have latitude/longitude dimensions")
 
         # Check time dimension
-        if "init_time" in ds.dims or "time" in ds.dims:
-            time_dim = "init_time" if "init_time" in ds.dims else "time"
+        if "init_time_utc" in ds.dims or "init_time" in ds.dims:
+            time_dim = "init_time_utc" if "init_time_utc" in ds.dims else "init_time"
             times = ds[time_dim].values
             logger.info("\nTime Coverage:")
-            logger.info(f"  First: {pd.Timestamp(times[0])}")
-            logger.info(f"  Last: {pd.Timestamp(times[-1])}")
+            logger.info(f"  First init_time: {pd.Timestamp(times[0])}")
+            logger.info(f"  Last init_time: {pd.Timestamp(times[-1])}")
+
+            if "step" in ds.dims:
+                steps = ds["step"].values
+                logger.info(f"  Forecast steps: {len(steps)} steps")
+                logger.info(f"  First step: {steps[0]}")
+                logger.info(f"  Last step: {steps[-1]}")
 
         logger.info("\n GFS Data Access: PASSED")
         return True
@@ -250,18 +262,53 @@ def test_time_alignment(solar_path, gfs_path):
         ds_solar = xr.open_zarr(str(solar_path))
         solar_times = ds_solar["time_utc"].values
 
-        ds_gfs = xr.open_zarr(str(gfs_path))
-        gfs_times = ds_gfs["time"].values
+        # Open GFS with decode_timedelta to handle step coordinate
+        store = fsspec.get_mapper(gfs_path, anon=True)
+        ds_gfs = xr.open_zarr(store, consolidated=True, decode_timedelta=True)
+
+        # GFS uses init_time_utc + step for valid time
+        # Calculate valid times from init_time and forecast steps
+        init_times = ds_gfs["init_time_utc"].values
+        steps = ds_gfs["step"].values
+
+        logger.info("\nGFS time structure:")
+        logger.info(f"  Init times: {len(init_times)} values")
+        logger.info(f"  Forecast steps: {len(steps)} values")
+        logger.info(f"  First init_time: {pd.Timestamp(init_times[0])}")
+        logger.info(f"  First step: {steps[0]}")
+
+        # Calculate all valid times (init_time + step for all combinations)
+        gfs_valid_times = []
+        for init_time in init_times:
+            for step in steps:
+                valid_time = pd.Timestamp(init_time) + pd.Timedelta(step)
+                gfs_valid_times.append(valid_time)
+
+        gfs_valid_times = np.array(gfs_valid_times, dtype="datetime64[ns]")
+        gfs_valid_times = np.unique(gfs_valid_times)  # Remove duplicates
+
+        logger.info(f"\nTotal unique GFS valid times: {len(gfs_valid_times)}")
 
         # Check for overlapping times
-        overlap = np.intersect1d(solar_times, gfs_times)
+        overlap = np.intersect1d(solar_times, gfs_valid_times)
         if len(overlap) > 0:
             logger.info(f"Found {len(overlap)} overlapping time steps")
+            logger.info(f"  First overlap: {pd.Timestamp(overlap[0])}")
+            logger.info(f"  Last overlap: {pd.Timestamp(overlap[-1])}")
         else:
             logger.warning("No overlapping time steps found")
+            logger.warning(
+                f"  Solar time range: {pd.Timestamp(solar_times[0])} to {pd.Timestamp(solar_times[-1])}"
+            )
+            logger.warning(
+                f"  GFS time range: {pd.Timestamp(gfs_valid_times[0])} to {pd.Timestamp(gfs_valid_times[-1])}"
+            )
+
+        return True
 
     except Exception as e:
         logger.error(f"Failed to check time alignment: {e}")
+        return False
 
 
 def main():
@@ -271,7 +318,13 @@ def main():
 
     results = {}
     results["solar_data"] = test_france_solar_data(solar_path)
-    results["gfs_access"] = test_gfs_data_access()
+    results["gfs_access"] = test_gfs_data_access(
+        gfs_path
+    )  # testing S3 accsess -- can switch to local GFS
+    if os.path.exists(gfs_path_local):
+        results["time_alignment"] = test_time_alignment(
+            solar_path, gfs_path_local
+        )  # Use local GFS for time alignment test
 
     # Summary
     logger.info("\n" + "=" * 60)
@@ -287,9 +340,6 @@ def main():
         logger.info("\nAll tests passed!")
     else:
         logger.info("\nSome tests failed - check logs above")
-
-    # Skip time alignment test since GFS is on S3
-    logger.info("\nSkipping time alignment test (GFS is on S3)")
 
 
 if __name__ == "__main__":

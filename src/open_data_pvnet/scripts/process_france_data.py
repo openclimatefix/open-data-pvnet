@@ -1,4 +1,3 @@
-
 import pandas as pd
 import xarray as xr
 import os
@@ -21,6 +20,7 @@ generation_data_dir = os.path.join(parent_3_levels_up, "tmp")
 output_dir = os.path.join(parent_3_levels_up, "data")
 start_yr = 2020
 end_yr = 2024
+
 
 def process_location_csv(generation_data_dir, region, year) -> pd.DataFrame:
     """Process the location CSV for a given region and year.
@@ -113,9 +113,6 @@ def process_location_csv(generation_data_dir, region, year) -> pd.DataFrame:
     return df
 
 
-
-
-
 # Create a France wide aggregate
 def create_France_aggregate(generation_data_dir, region_list, year_list) -> pd.DataFrame:
     """Create a France-wide aggregate DataFrame from regional generation data.
@@ -198,7 +195,8 @@ def create_xarray_dataset(
             region_df = region_df.sort_index()  # Sort by datetime
 
             all_data.append(region_df)
-            location_ids.append(region)
+            # Use integer location_id from metadata
+            location_ids.append(int(metadata.loc[region, "location_id"]))
             latitudes.append(metadata.loc[region, "latitude"])
             longitudes.append(metadata.loc[region, "longitude"])
 
@@ -276,6 +274,7 @@ def create_xarray_dataset(
 
     return ds
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Process France RTE solar generation data and create xarray dataset"
@@ -283,14 +282,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "--generation-data-dir",
         type=str,
-        default="downloads",
-        help="Directory containing the generation CSV files (default: downloads)",
+        default=None,
+        help=f"Directory containing the generation CSV files (default: {generation_data_dir})",
     )
     parser.add_argument(
-        "--start-yr", type=int, default=2020, help="Start year for data processing (default: 2020)"
+        "--start_yr", type=int, default=2020, help="Start year for data processing (default: 2020)"
     )
     parser.add_argument(
-        "--end-yr", type=int, default=2024, help="End year for data processing (default: 2024)"
+        "--end_yr", type=int, default=2024, help="End year for data processing (default: 2024)"
     )
     parser.add_argument(
         "--output",
@@ -307,8 +306,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # Convert to absolute path if relative
-    if not os.path.isabs(args.generation_data_dir):
+    # Use global generation_data_dir if no argument provided, otherwise convert to absolute path if relative
+    if args.generation_data_dir is None:
+        # Use the global variable defined at top of file
+        pass  # generation_data_dir already set
+    elif not os.path.isabs(args.generation_data_dir):
         generation_data_dir = os.path.join(os.getcwd(), args.generation_data_dir)
     else:
         generation_data_dir = args.generation_data_dir
