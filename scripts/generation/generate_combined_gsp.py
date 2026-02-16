@@ -31,7 +31,7 @@ import os
 import typer
 import logging
 
-from src.open_data_pvnet.scripts.fetch_pvlive_data import PVLiveData
+from scripts.generation.fetch_pvlive_data import PVLiveData
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 

@@ -12,7 +12,7 @@ from pathlib import Path
 import concurrent.futures
 from typing import List, Tuple
 from open_data_pvnet.utils.data_uploader import upload_monthly_zarr, upload_to_huggingface
-from open_data_pvnet.scripts.archive import handle_archive
+from scripts.generation.archive import handle_archive
 from open_data_pvnet.nwp.met_office import CONFIG_PATHS
 from open_data_pvnet.nwp.dwd import process_dwd_data
 
