@@ -1,0 +1,106 @@
+# India PVNet Configuration
+# Complete configuration for training PVNet on India solar data with GFS NWP
+
+general:
+  description: India solar generation forecasting configuration
+  name: india_pvnet_config
+
+input_data:
+  # India Solar Generation Data (All-India national aggregate)
+  # Uses 'generation:' (generic PV data) not 'gsp:' (UK-specific Grid Supply Point)
+  generation:
+    # Local Zarr path - update to S3 path when uploaded
+    zarr_path: "C:/Users/asus vivoBook/Desktop/New folder (2)/pvnet-india-data/processed/india_solar_2024-2025.zarr"
+    interval_start_minutes: -60     # 1 hour history
+    interval_end_minutes: 480       # 8 hours forecast
+    time_resolution_minutes: 60     # Hourly data (60 min)
+    dropout_timedeltas_minutes: []
+    dropout_fraction: 0.0
+    public: false  # Local data
+
+  # GFS NWP Data for India region
+  nwp:
+    gfs:
+      time_resolution_minutes: 180  # 3-hourly GFS forecasts
+      interval_start_minutes: -180  # 3 hours before t0
+      interval_end_minutes: 540     # 9 hours after t0
+      dropout_fraction: 0.0
+      dropout_timedeltas_minutes: []
+      
+      # Global GFS data from OCF S3
+      zarr_path: "s3://ocf-open-data-pvnet/data/gfs/v4/2024.zarr"
+      provider: "gfs"
+      public: true
+      
+      # Spatial sampling (small patch around site)
+      # Note: ocf-data-sampler uses generation coordinates (lon/lat) for spatial sampling
+      image_size_pixels_height: 4
+      image_size_pixels_width: 4
+      
+      # Weather channels for solar prediction
+      channels:
+        - dlwrf   # downwards long-wave radiation flux
+        - dswrf   # downwards short-wave radiation flux (critical for solar)
+        - hcc     # high cloud cover
+        - lcc     # low cloud cover
+        - mcc     # medium cloud cover
+        - prate   # precipitation rate
+        - r       # relative humidity
+        - t       # 2-metre temperature
+        - tcc     # total cloud cover (critical for solar)
+        - u10     # 10-metre wind U component
+        - u100    # 100-metre wind U component
+        - v10     # 10-metre wind V component
+        - v100    # 100-metre wind V component
+        - vis     # visibility
+
+      # GFS normalisation constants (global stats)
+      normalisation_constants:
+        dlwrf:
+          mean: 298.342
+          std: 96.305916
+        dswrf:
+          mean: 168.12321
+          std: 246.18533
+        hcc:
+          mean: 35.272
+          std: 42.525383
+        lcc:
+          mean: 43.578342
+          std: 44.3732
+        mcc:
+          mean: 33.738823
+          std: 43.150745
+        prate:
+          mean: 2.8190969e-05
+          std: 0.00010159573
+        r:
+          mean: 18.359747
+          std: 25.440672
+        t:
+          mean: 278.5223
+          std: 22.825893
+        tcc:
+          mean: 66.841606
+          std: 41.030598
+        u10:
+          mean: -0.0022310058
+          std: 5.470838
+        u100:
+          mean: 0.0823025
+          std: 6.8899174
+        v10:
+          mean: 0.06219831
+          std: 4.7401133
+        v100:
+          mean: 0.0797807
+          std: 6.076132
+        vis:
+          mean: 19628.32
+          std: 8294.022
+
+  # Solar position input
+  solar_position:
+    interval_start_minutes: -60
+    interval_end_minutes: 480
+    time_resolution_minutes: 60

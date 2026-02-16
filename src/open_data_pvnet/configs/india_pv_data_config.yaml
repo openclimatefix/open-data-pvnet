@@ -1,0 +1,67 @@
+general:
+  name: "india_pv_config"
+  description: "India solar generation data configuration from Grid-India Mendeley dataset"
+
+input_data:
+  # India uses "gsp" structure but with regional IDs instead of UK GSP IDs
+  # region_id mapping:
+  #   0: Northern Region (NR) - Delhi/NCR
+  #   1: Western Region (WR) - Mumbai/Gujarat
+  #   2: Southern Region (SR) - Chennai/Karnataka
+  #   3: Eastern Region (ER) - Kolkata/Bihar
+  #   4: North-Eastern Region (NER) - Guwahati/Assam
+  
+  gsp:
+    # Path to processed India solar Zarr (to be uploaded after processing)
+    zarr_path: "data/india/india_solar_2021-2023.zarr"
+    
+    # Mendeley data is hourly (60 minutes)
+    time_resolution_minutes: 60
+    
+    # History and forecast windows
+    interval_start_minutes: -60   # 1 hour of history
+    interval_end_minutes: 480     # 8 hours of forecast
+    
+    # No dropout for initial training
+    dropout_timedeltas_minutes: []
+    dropout_fraction: 0.0
+    
+    public: true
+
+# India regional grid metadata
+# Coordinates are approximate centroids of each regional grid
+regions:
+  - region_id: 0
+    name: "Northern Region (NR)"
+    abbreviation: "NR"
+    latitude: 28.6139
+    longitude: 77.2090
+    states: ["Delhi", "Haryana", "Punjab", "Rajasthan", "UP", "UK", "HP", "J&K"]
+    
+  - region_id: 1
+    name: "Western Region (WR)"
+    abbreviation: "WR"
+    latitude: 19.0760
+    longitude: 72.8777
+    states: ["Maharashtra", "Gujarat", "MP", "Chhattisgarh", "Goa", "Daman & Diu"]
+    
+  - region_id: 2
+    name: "Southern Region (SR)"
+    abbreviation: "SR"
+    latitude: 13.0827
+    longitude: 80.2707
+    states: ["Tamil Nadu", "Karnataka", "Kerala", "Andhra Pradesh", "Telangana", "Puducherry"]
+    
+  - region_id: 3
+    name: "Eastern Region (ER)"
+    abbreviation: "ER"
+    latitude: 22.5726
+    longitude: 88.3639
+    states: ["West Bengal", "Bihar", "Jharkhand", "Odisha", "Sikkim"]
+    
+  - region_id: 4
+    name: "North-Eastern Region (NER)"
+    abbreviation: "NER"
+    latitude: 26.1445
+    longitude: 91.7362
+    states: ["Assam", "Arunachal Pradesh", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Tripura"]

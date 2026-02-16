@@ -1,0 +1,92 @@
+general:
+  name: "india_gfs_config"
+  description: "Configuration for GFS NWP data sampling over India region"
+
+input_data:
+  nwp:
+    gfs:
+      # GFS provides 3-hourly forecasts globally
+      time_resolution_minutes: 180
+      interval_start_minutes: -180
+      interval_end_minutes: 540
+      dropout_timedeltas_minutes: null
+      dropout_fraction: 0.0
+      accum_channels: []
+      max_staleness_minutes: 540
+      
+      # Use existing OCF GFS data - filter to India bounds at runtime
+      zarr_path: "s3://ocf-open-data-pvnet/data/gfs/v4/2023.zarr"
+      provider: "gfs"
+      public: true
+      
+      # India bounding box (approximate)
+      # North: 38°N (Kashmir), South: 6°N (Kanyakumari)
+      # West: 68°E (Gujarat), East: 98°E (Arunachal Pradesh)
+      latitude_bounds: [6.0, 38.0]
+      longitude_bounds: [68.0, 98.0]
+      
+      # Spatial sampling
+      image_size_pixels_height: 2
+      image_size_pixels_width: 2
+      
+      # Weather channels for solar prediction
+      channels:
+        - dlwrf  # downwards long-wave radiation flux
+        - dswrf  # downwards short-wave radiation flux
+        - hcc    # high cloud cover
+        - lcc    # low cloud cover
+        - mcc    # medium cloud cover
+        - prate  # precipitation rate
+        - r      # relative humidity
+        - t      # 2-metre temperature
+        - tcc    # total cloud cover
+        - u10    # 10-metre wind U component
+        - u100   # 100-metre wind U component
+        - v10    # 10-metre wind V component
+        - v100   # 100-metre wind V component
+        - vis    # visibility
+
+      # Normalisation constants (using global GFS stats from UK config)
+      normalisation_constants:
+        dlwrf:
+          mean: 298.342
+          std: 96.305916
+        dswrf:
+          mean: 168.12321
+          std: 246.18533
+        hcc:
+          mean: 35.272
+          std: 42.525383
+        lcc:
+          mean: 43.578342
+          std: 44.3732
+        mcc:
+          mean: 33.738823
+          std: 43.150745
+        prate:
+          mean: 2.8190969e-05
+          std: 0.00010159573
+        r:
+          mean: 18.359747
+          std: 25.440672
+        t:
+          mean: 278.5223
+          std: 22.825893
+        tcc:
+          mean: 66.841606
+          std: 41.030598
+        u10:
+          mean: -0.0022310058
+          std: 5.470838
+        u100:
+          mean: 0.0823025
+          std: 6.8899174
+        v10:
+          mean: 0.06219831
+          std: 4.7401133
+        v100:
+          mean: 0.0797807
+          std: 6.076132
+        vis:
+          mean: 19628.32
+          std: 8294.022

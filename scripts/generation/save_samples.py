@@ -27,7 +27,7 @@ if __name__ == "__main__":
 
     # Set the start method for torch multiprocessing. Choose either "forkserver" or "spawn" to be
     # compatible with dask's multiprocessing.
-    mp.set_start_method("forkserver")
+    mp.set_start_method("spawn")
 
     # Set the sharing strategy to 'file_system' to handle file descriptor limitations. This is
     # important because libraries like Zarr may open many files, which can exhaust the file
@@ -43,9 +43,8 @@ import warnings
 
 import dask
 import hydra
-from ocf_data_sampler.torch_datasets.datasets import PVNetUKRegionalDataset, SitesDataset
-from ocf_data_sampler.torch_datasets.sample.site import SiteSample
-from ocf_data_sampler.torch_datasets.sample.uk_regional import UKRegionalSample
+from ocf_data_sampler.torch_datasets.pvnet_dataset import PVNetDataset
+import torch
 from omegaconf import DictConfig, OmegaConf
 from sqlalchemy import exc as sa_exc
 from torch.utils.data import DataLoader, Dataset
@@ -77,33 +76,16 @@ class SaveFuncFactory:
 
     def __call__(self, sample, sample_num: int):
         """Save a sample to disk"""
-        save_path = f"{self.save_dir}/{sample_num:08}"
-
-        if self.renewable == "pv_uk":
-            sample_class = UKRegionalSample(sample)
-            filename = f"{save_path}.pt"
-        elif self.renewable == "site":
-            sample_class = SiteSample(sample)
-            filename = f"{save_path}.nc"
-        else:
-            raise ValueError(f"Unknown renewable: {self.renewable}")
-        # Assign data and save
-        sample_class._data = sample
-        sample_class.save(filename)
+        save_path = f"{self.save_dir}/{sample_num:08}.pt"
+        torch.save(sample, save_path)
 
 
 def get_dataset(
     config_path: str, start_time: str, end_time: str, renewable: str = "pv_uk"
 ) -> Dataset:
     """Get the dataset for the given renewable type."""
-    if renewable == "pv_uk":
-        dataset_cls = PVNetUKRegionalDataset
-    elif renewable == "site":
-        dataset_cls = SitesDataset
-    else:
-        raise ValueError(f"Unknown renewable: {renewable}")
-
-    return dataset_cls(config_path, start_time=start_time, end_time=end_time)
+    # Ignoring renewable parameter as PVNetDataset is generic
+    return PVNetDataset(config_path, start_time=start_time, end_time=end_time)
 
 
 def save_samples_with_dataloader(
