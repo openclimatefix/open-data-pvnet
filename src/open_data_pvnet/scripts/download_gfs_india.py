@@ -1,35 +1,43 @@
 """
 Download and process NOAA GFS data for India region.
 
-Uses Herbie for efficient byte-range downloads (.idx-based) from NOAA S3.
-Downloads only the specific variables needed, not full GRIB2 files.
-Converts to Zarr format matching the OCF GFS schema used by open-data-pvnet.
+Two download modes:
+  1. NOMADS GRIB filter (fast) — Selects specific variables + India subregion
+     in a single HTTP request. Returns ~100-200KB per file vs 300MB full GRIB.
+     Only available for last ~10 days of data.
+  2. Herbie byte-range (fallback) — For historical data from S3.
+     Uses .idx index files to download specific variables.
+
+Output: OCF-compatible Zarr with dims (init_time_utc, step, latitude, longitude)
+and 14 data variables matching existing GFS schema.
 
 Usage:
-    # Test with 1 day of data
-    python download_gfs_india.py --year 2024 --months 1 --max-days 1
+    # Fast mode — recent data via NOMADS filter (recommended for testing)
+    python download_gfs_india.py --year 2026 --months 2 --max-days 1
 
-    # Download Jan 2024
-    python download_gfs_india.py --year 2024 --months 1
+    # Historical data via Herbie S3 byte-range
+    python download_gfs_india.py --year 2024 --months 1 --max-days 1 --source herbie
 
-    # Download full year and merge
-    python download_gfs_india.py --year 2024 --months 1 2 3 4 5 6 7 8 9 10 11 12 --merge
-
-    # Dry run (verify file availability without downloading)
-    python download_gfs_india.py --year 2024 --months 1 --dry-run
+    # Parallel downloads (10 workers)
+    python download_gfs_india.py --year 2024 --months 1 --max-days 3 --workers 10
 
 Requirements:
-    pip install herbie-data xarray cfgrib eccodes numpy pandas zarr s3fs
+    pip install xarray cfgrib eccodes numpy pandas zarr requests
+    pip install herbie-data  # only needed for --source herbie
 """
 
 import argparse
 import logging
 import os
+import tempfile
 import warnings
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import requests
 import xarray as xr
 
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -42,97 +50,228 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # --------------------------------------------------------------------------- #
-# OCF channel → GFS GRIB search term mapping
+# OCF channel mapping
 # --------------------------------------------------------------------------- #
-# Verified against GFS pgrb2.0p25 inventory for 2024 data.
-# Each entry: (ocf_channel_name, herbie_search_regex, xarray_var_name)
 
+# NOMADS uses different parameter names than GRIB shortnames
+# Format: ocf_name -> (nomads_var_param, herbie_search_regex, description)
 OCF_CHANNELS = {
     "dlwrf": {
+        "nomads": "DLWRF",
         "search": ":DLWRF:surface",
-        "description": "Downward long-wave radiation flux [W/m²]",
+        "level": "surface",
     },
     "dswrf": {
+        "nomads": "DSWRF",
         "search": ":DSWRF:surface",
-        "description": "Downward short-wave radiation flux [W/m²]",
+        "level": "surface",
     },
     "hcc": {
+        "nomads": "HCDC",
         "search": ":HCDC:high cloud layer:(?!.*ave)",
-        "description": "High cloud cover [%]",
+        "level": "high_cloud_layer",
     },
     "lcc": {
+        "nomads": "LCDC",
         "search": ":LCDC:low cloud layer:(?!.*ave)",
-        "description": "Low cloud cover [%]",
+        "level": "low_cloud_layer",
     },
     "mcc": {
+        "nomads": "MCDC",
         "search": ":MCDC:middle cloud layer:(?!.*ave)",
-        "description": "Medium cloud cover [%]",
+        "level": "middle_cloud_layer",
     },
     "prate": {
+        "nomads": "PRATE",
         "search": ":PRATE:surface:(?!.*ave)",
-        "description": "Precipitation rate [kg/m²/s]",
+        "level": "surface",
     },
     "r": {
+        "nomads": "RH",
         "search": ":RH:850 mb",
-        "description": "Relative humidity at 850 hPa [%]",
+        "level": "850_mb",
     },
     "t": {
+        "nomads": "TMP",
         "search": ":TMP:2 m above ground",
-        "description": "2-metre temperature [K]",
+        "level": "2_m_above_ground",
     },
     "tcc": {
+        "nomads": "TCDC",
         "search": ":TCDC:entire atmosphere:(?!.*ave)",
-        "description": "Total cloud cover [%]",
+        "level": "entire_atmosphere_(considered_as_a_single_layer)",
     },
     "u10": {
+        "nomads": "UGRD",
         "search": ":UGRD:10 m above ground",
-        "description": "10-metre U-wind [m/s]",
+        "level": "10_m_above_ground",
     },
     "u100": {
+        "nomads": "UGRD",
         "search": ":UGRD:100 m above ground",
-        "description": "100-metre U-wind [m/s]",
+        "level": "100_m_above_ground",
     },
     "v10": {
+        "nomads": "VGRD",
         "search": ":VGRD:10 m above ground",
-        "description": "10-metre V-wind [m/s]",
+        "level": "10_m_above_ground",
     },
     "v100": {
+        "nomads": "VGRD",
         "search": ":VGRD:100 m above ground",
-        "description": "100-metre V-wind [m/s]",
+        "level": "100_m_above_ground",
     },
     "vis": {
+        "nomads": "VIS",
         "search": ":VIS:surface",
-        "description": "Visibility [m]",
+        "level": "surface",
     },
 }
 
-# India bounding box with 1° buffer
+# India bounding box (with 1° buffer)
 INDIA_LAT_MIN = 5.0
 INDIA_LAT_MAX = 39.0
 INDIA_LON_MIN = 67.0
 INDIA_LON_MAX = 99.0
 
-# GFS forecast hours to download (17 steps: 0-48h at 3h intervals)
+# GFS forecast hours (17 steps: 0-48h at 3h intervals)
 FORECAST_HOURS = list(range(0, 49, 3))
 
 # GFS initialization hours (4x daily)
 INIT_HOURS = [0, 6, 12, 18]
 
+# NOMADS base URL
+NOMADS_BASE = "https://nomads.ncep.noaa.gov/cgi-bin/filter_gfs_0p25.pl"
 
-def download_single_variable(
+
+# --------------------------------------------------------------------------- #
+# NOMADS GRIB Filter — fast, subregion-aware downloads
+# --------------------------------------------------------------------------- #
+
+def build_nomads_url(date: datetime, init_hour: int, fxx: int) -> str:
+    """
+    Build NOMADS GRIB filter URL for India-subset GFS download.
+
+    Downloads ALL 14 OCF variables + India subregion in a single request.
+    Returns ~100-200KB GRIB file instead of 300MB full global file.
+    """
+    date_str = date.strftime("%Y%m%d")
+
+    params = {
+        "dir": f"/gfs.{date_str}/{init_hour:02d}/atmos",
+        "file": f"gfs.t{init_hour:02d}z.pgrb2.0p25.f{fxx:03d}",
+        # Subregion — India with buffer
+        "subregion": "",
+        "toplat": str(INDIA_LAT_MAX),
+        "bottomlat": str(INDIA_LAT_MIN),
+        "leftlon": str(INDIA_LON_MIN),
+        "rightlon": str(INDIA_LON_MAX),
+    }
+
+    # Add all variable selections
+    nomads_vars = set()
+    for spec in OCF_CHANNELS.values():
+        nomads_vars.add(spec["nomads"])
+    for var in sorted(nomads_vars):
+        params[f"var_{var}"] = "on"
+
+    # Add level selections
+    nomads_levels = set()
+    for spec in OCF_CHANNELS.values():
+        nomads_levels.add(spec["level"])
+    for level in sorted(nomads_levels):
+        params[f"lev_{level}"] = "on"
+
+    # Build URL manually (NOMADS is finicky about param order)
+    param_str = "&".join(f"{k}={v}" for k, v in params.items())
+    return f"{NOMADS_BASE}?{param_str}"
+
+
+def download_nomads_step(
+    date: datetime,
+    init_hour: int,
+    fxx: int,
+    tmp_dir: str,
+    timeout: int = 60,
+) -> str | None:
+    """Download a single forecast step via NOMADS grib filter."""
+    url = build_nomads_url(date, init_hour, fxx)
+    fname = f"gfs_{date.strftime('%Y%m%d')}_{init_hour:02d}z_f{fxx:03d}.grib2"
+    local_path = os.path.join(tmp_dir, fname)
+
+    if os.path.exists(local_path) and os.path.getsize(local_path) > 1000:
+        return local_path
+
+    try:
+        resp = requests.get(url, timeout=timeout)
+        if resp.status_code == 200 and len(resp.content) > 1000:
+            with open(local_path, "wb") as f:
+                f.write(resp.content)
+            size_kb = len(resp.content) / 1024
+            logger.debug(f"  Downloaded f{fxx:03d}: {size_kb:.0f} KB")
+            return local_path
+        else:
+            logger.debug(f"  f{fxx:03d}: HTTP {resp.status_code} or empty")
+            return None
+    except Exception as e:
+        logger.debug(f"  f{fxx:03d}: download failed ({e})")
+        return None
+
+
+def extract_variables_from_grib(grib_path: str) -> dict[str, xr.DataArray]:
+    """Extract OCF variables from a subsetted GRIB file."""
+    variables = {}
+
+    for ocf_name, spec in OCF_CHANNELS.items():
+        try:
+            ds = xr.open_dataset(
+                grib_path,
+                engine="cfgrib",
+                backend_kwargs={
+                    "filter_by_keys": {
+                        "shortName": spec["nomads"].lower()
+                        if spec["nomads"] not in ("HCDC", "LCDC", "MCDC")
+                        else spec["nomads"].lower(),
+                    },
+                    "errors": "ignore",
+                },
+            )
+
+            if len(ds.data_vars) == 0:
+                continue
+
+            var_name = list(ds.data_vars)[0]
+            da = ds[var_name].load()
+
+            # Drop extra coords
+            keep = {"latitude", "longitude"}
+            drop = [c for c in da.coords if c not in keep]
+            da = da.drop_vars(drop, errors="ignore")
+            da.name = ocf_name
+
+            variables[ocf_name] = da.astype(np.float32)
+            ds.close()
+
+        except Exception:
+            pass
+
+    return variables
+
+
+# --------------------------------------------------------------------------- #
+# Herbie byte-range downloads — for historical S3 data
+# --------------------------------------------------------------------------- #
+
+def download_herbie_step(
     date_str: str,
     init_hour: int,
     fxx: int,
-    ocf_name: str,
-    search_term: str,
-) -> xr.DataArray | None:
-    """
-    Download a single variable for one forecast step using Herbie byte-range.
-
-    Returns DataArray subset to India, or None on failure.
-    """
+    channels: list[str],
+) -> dict[str, xr.DataArray]:
+    """Download variables via Herbie byte-range from S3."""
     from herbie import Herbie
 
+    variables = {}
     try:
         H = Herbie(
             date_str,
@@ -142,97 +281,131 @@ def download_single_variable(
             verbose=False,
         )
 
-        # Download only this variable via byte-range
-        ds = H.xarray(search_term, verbose=False)
+        for ch_name in channels:
+            spec = OCF_CHANNELS[ch_name]
+            try:
+                ds = H.xarray(spec["search"], verbose=False)
+                if ds is None or len(ds.data_vars) == 0:
+                    continue
 
-        if ds is None or len(ds.data_vars) == 0:
-            return None
+                var_name = list(ds.data_vars)[0]
+                da = ds[var_name].load()
 
-        # Get the data variable (first one)
-        var_name = list(ds.data_vars)[0]
-        da = ds[var_name].load()
+                # Subset to India
+                if float(da.longitude.max()) > 180:
+                    da = da.sel(
+                        latitude=slice(INDIA_LAT_MAX, INDIA_LAT_MIN),
+                        longitude=slice(INDIA_LON_MIN, INDIA_LON_MAX),
+                    )
+                else:
+                    da = da.sel(
+                        latitude=slice(INDIA_LAT_MAX, INDIA_LAT_MIN),
+                        longitude=slice(INDIA_LON_MIN, INDIA_LON_MAX),
+                    )
 
-        # Handle GFS longitude convention (0-360 → subset India)
-        if float(da.longitude.max()) > 180:
-            da_india = da.sel(
-                latitude=slice(INDIA_LAT_MAX, INDIA_LAT_MIN),
-                longitude=slice(INDIA_LON_MIN, INDIA_LON_MAX),
-            )
-        else:
-            da_india = da.sel(
-                latitude=slice(INDIA_LAT_MAX, INDIA_LAT_MIN),
-                longitude=slice(INDIA_LON_MIN, INDIA_LON_MAX),
-            )
+                keep = {"latitude", "longitude"}
+                drop = [c for c in da.coords if c not in keep]
+                da = da.drop_vars(drop, errors="ignore")
+                da.name = ch_name
+                variables[ch_name] = da.astype(np.float32)
 
-        # Drop extra coords from cfgrib (time, step, etc.)
-        keep_dims = {"latitude", "longitude"}
-        drop_coords = [c for c in da_india.coords if c not in keep_dims]
-        da_india = da_india.drop_vars(drop_coords, errors="ignore")
-
-        # Rename to OCF channel name
-        da_india.name = ocf_name
-
-        return da_india.astype(np.float32)
+            except Exception:
+                pass
 
     except Exception as e:
-        logger.debug(f"    {ocf_name} f{fxx:03d}: {e}")
-        return None
+        logger.warning(f"  Herbie init failed for f{fxx:03d}: {e}")
 
+    return variables
+
+
+# --------------------------------------------------------------------------- #
+# Core processing pipeline
+# --------------------------------------------------------------------------- #
 
 def process_single_init_time(
     date: datetime,
     init_hour: int,
+    source: str = "nomads",
+    workers: int = 6,
     channels: list[str] | None = None,
 ) -> xr.Dataset | None:
     """
     Process all forecast steps for a single GFS init time.
 
-    Downloads all 14 OCF channels for each forecast step,
-    combines into a Dataset with dims (step, latitude, longitude).
-
     Args:
         date: Date to process
-        init_hour: GFS initialization hour (0, 6, 12, 18)
-        channels: Optional subset of channels to download
+        init_hour: Init hour (0, 6, 12, 18)
+        source: "nomads" (fast, recent data) or "herbie" (historical S3)
+        workers: Number of parallel download workers
+        channels: Channel subset (default: all 14)
 
     Returns:
         xr.Dataset with dims (init_time_utc, step, latitude, longitude)
-        and 14 data variables, or None if no data.
     """
-    date_str = date.strftime("%Y-%m-%d")
-    init_time = pd.Timestamp(date_str) + pd.Timedelta(hours=init_hour)
-
     if channels is None:
         channels = list(OCF_CHANNELS.keys())
 
-    logger.info(f"Processing {init_time} ({len(channels)} channels × "
-                f"{len(FORECAST_HOURS)} steps)")
+    init_time = pd.Timestamp(date.strftime("%Y-%m-%d")) + pd.Timedelta(
+        hours=init_hour
+    )
+    logger.info(f"Processing {init_time} [{source}] "
+                f"({len(channels)}ch × {len(FORECAST_HOURS)}steps, "
+                f"{workers} workers)")
 
     step_datasets = []
 
-    for fxx in FORECAST_HOURS:
-        step_vars = {}
+    if source == "nomads":
+        # NOMADS: download subsetted GRIB files in parallel
+        with tempfile.TemporaryDirectory(prefix="gfs_india_") as tmp_dir:
+            # Parallel download
+            grib_paths = {}
+            with ThreadPoolExecutor(max_workers=workers) as executor:
+                futures = {
+                    executor.submit(
+                        download_nomads_step, date, init_hour, fxx, tmp_dir
+                    ): fxx
+                    for fxx in FORECAST_HOURS
+                }
+                for future in as_completed(futures):
+                    fxx = futures[future]
+                    try:
+                        path = future.result()
+                        if path:
+                            grib_paths[fxx] = path
+                    except Exception as e:
+                        logger.debug(f"  f{fxx:03d}: {e}")
 
-        for ch_name in channels:
-            spec = OCF_CHANNELS[ch_name]
-            da = download_single_variable(
-                date_str, init_hour, fxx, ch_name, spec["search"]
-            )
-            if da is not None:
-                step_vars[ch_name] = da
+            logger.info(f"  Downloaded {len(grib_paths)}/{len(FORECAST_HOURS)} steps")
 
-        if not step_vars:
-            logger.warning(f"  Step f{fxx:03d}: no variables extracted")
-            continue
+            # Extract variables from each GRIB (parallel)
+            for fxx in FORECAST_HOURS:
+                if fxx not in grib_paths:
+                    continue
+                variables = extract_variables_from_grib(grib_paths[fxx])
+                if not variables:
+                    continue
 
-        step_ds = xr.Dataset(step_vars)
-        step_td = np.timedelta64(fxx, "h")
-        step_ds = step_ds.expand_dims({"step": [step_td]})
-        step_datasets.append(step_ds)
+                step_ds = xr.Dataset(variables)
+                step_td = np.timedelta64(fxx, "h")
+                step_ds = step_ds.expand_dims({"step": [step_td]})
+                step_datasets.append(step_ds)
 
-        n_ok = len(step_vars)
-        n_total = len(channels)
-        logger.info(f"  f{fxx:03d}: {n_ok}/{n_total} channels OK")
+    else:
+        # Herbie: byte-range downloads from S3
+        date_str = date.strftime("%Y-%m-%d")
+        for fxx in FORECAST_HOURS:
+            variables = download_herbie_step(date_str, init_hour, fxx, channels)
+            if not variables:
+                logger.debug(f"  f{fxx:03d}: no variables")
+                continue
+
+            step_ds = xr.Dataset(variables)
+            step_td = np.timedelta64(fxx, "h")
+            step_ds = step_ds.expand_dims({"step": [step_td]})
+            step_datasets.append(step_ds)
+
+            n_ok = len(variables)
+            logger.info(f"  f{fxx:03d}: {n_ok}/{len(channels)} channels OK")
 
     if not step_datasets:
         logger.warning(f"  No valid steps for {init_time}")
@@ -251,6 +424,8 @@ def process_month(
     month: int,
     output_dir: str,
     max_days: int | None = None,
+    source: str = "nomads",
+    workers: int = 6,
     channels: list[str] | None = None,
     dry_run: bool = False,
 ) -> str | None:
@@ -261,16 +436,15 @@ def process_month(
         year: Year to process
         month: Month to process (1-12)
         output_dir: Directory for output Zarr files
-        max_days: Limit number of days (for testing)
-        channels: Optional channel subset
-        dry_run: If True, only verify data availability
+        max_days: Limit days per month (testing)
+        source: "nomads" or "herbie"
+        workers: Parallel download workers
+        channels: Channel subset
+        dry_run: Verify availability without downloading
 
     Returns:
-        Path to output Zarr file, or None.
+        Path to output Zarr, or None.
     """
-    from herbie import Herbie
-
-    # Date range
     start = datetime(year, month, 1)
     end = datetime(year + (month // 12), (month % 12) + 1, 1)
     dates = []
@@ -284,23 +458,17 @@ def process_month(
 
     n_init = len(dates) * len(INIT_HOURS)
     logger.info(f"{'[DRY RUN] ' if dry_run else ''}"
-                f"Processing {year}-{month:02d}: "
-                f"{len(dates)} days, {n_init} init times")
+                f"{year}-{month:02d}: {len(dates)} days, {n_init} init times "
+                f"[{source}, {workers} workers]")
 
     if dry_run:
-        # Just check availability for first day
-        for init_hour in INIT_HOURS:
+        if source == "nomads":
+            url = build_nomads_url(dates[0], 0, 3)
             try:
-                H = Herbie(
-                    dates[0].strftime("%Y-%m-%d"),
-                    model="gfs", fxx=0, product="pgrb2.0p25", verbose=False,
-                )
-                inv = H.inventory()
-                logger.info(f"  {dates[0].strftime('%Y-%m-%d')} {init_hour:02d}Z: "
-                            f"{len(inv)} GRIB messages available")
+                resp = requests.head(url, timeout=10)
+                logger.info(f"  NOMADS: HTTP {resp.status_code}")
             except Exception as e:
-                logger.warning(f"  {dates[0].strftime('%Y-%m-%d')} {init_hour:02d}Z: "
-                               f"unavailable ({e})")
+                logger.warning(f"  NOMADS: {e}")
         return None
 
     all_datasets = []
@@ -308,7 +476,9 @@ def process_month(
     for date in dates:
         for init_hour in INIT_HOURS:
             try:
-                ds = process_single_init_time(date, init_hour, channels)
+                ds = process_single_init_time(
+                    date, init_hour, source, workers, channels
+                )
                 if ds is not None:
                     all_datasets.append(ds)
             except Exception as e:
@@ -319,12 +489,11 @@ def process_month(
         logger.warning(f"No data processed for {year}-{month:02d}")
         return None
 
-    # Combine all init times
     logger.info(f"Combining {len(all_datasets)} init times...")
     combined = xr.concat(all_datasets, dim="init_time_utc")
     combined = combined.sortby("init_time_utc")
 
-    # Ensure latitude is descending (N→S, matching OCF convention)
+    # Ensure latitude descending (N→S, matching OCF convention)
     if combined.latitude[0] < combined.latitude[-1]:
         combined = combined.isel(latitude=slice(None, None, -1))
 
@@ -335,8 +504,10 @@ def process_month(
     logger.info(f"Saving {output_path}...")
     logger.info(f"  Dims: {dict(combined.dims)}")
     logger.info(f"  Channels: {list(combined.data_vars)}")
-    lat_min, lat_max = float(combined.latitude.min()), float(combined.latitude.max())
-    lon_min, lon_max = float(combined.longitude.min()), float(combined.longitude.max())
+    lat_min = float(combined.latitude.min())
+    lat_max = float(combined.latitude.max())
+    lon_min = float(combined.longitude.min())
+    lon_max = float(combined.longitude.max())
     logger.info(f"  Lat: {lat_min:.1f} to {lat_max:.1f}")
     logger.info(f"  Lon: {lon_min:.1f} to {lon_max:.1f}")
 
@@ -348,70 +519,64 @@ def process_month(
 
 def merge_monthly_zarrs(zarr_paths: list[str], output_path: str) -> str:
     """Merge monthly Zarr files into a single yearly Zarr."""
-    logger.info(f"Merging {len(zarr_paths)} monthly files → {output_path}")
-
+    logger.info(f"Merging {len(zarr_paths)} files → {output_path}")
     datasets = [xr.open_zarr(p) for p in zarr_paths]
     combined = xr.concat(datasets, dim="init_time_utc")
     combined = combined.sortby("init_time_utc")
     combined.to_zarr(output_path, mode="w", consolidated=True)
-
     logger.info(f"✓ Merged: {combined.dims['init_time_utc']} init times")
     return output_path
 
 
 def validate_zarr(zarr_path: str) -> bool:
-    """Validate output Zarr matches OCF GFS schema."""
+    """Validate Zarr matches OCF GFS schema."""
     logger.info(f"Validating {zarr_path}...")
     ds = xr.open_zarr(zarr_path)
 
-    # Check dims
     required_dims = {"init_time_utc", "step", "latitude", "longitude"}
     actual_dims = set(ds.dims)
     assert required_dims.issubset(actual_dims), \
         f"Missing dims: {required_dims - actual_dims}"
 
-    # Check channels
-    expected_channels = set(OCF_CHANNELS.keys())
-    actual_channels = set(ds.data_vars)
-    missing = expected_channels - actual_channels
+    expected = set(OCF_CHANNELS.keys())
+    actual = set(ds.data_vars)
+    missing = expected - actual
     if missing:
         logger.warning(f"  Missing channels: {missing}")
     else:
-        logger.info(f"  ✓ All 14 channels present")
+        logger.info("  ✓ All 14 channels present")
 
-    # Check lat/lon bounds cover India
-    assert float(ds.latitude.min()) <= 8.0, "Latitude min should cover southern India"
-    assert float(ds.latitude.max()) >= 36.0, "Latitude max should cover northern India"
-    assert float(ds.longitude.min()) <= 70.0, "Longitude min should cover western India"
-    assert float(ds.longitude.max()) >= 96.0, "Longitude max should cover eastern India"
-    logger.info(f"  ✓ Spatial coverage OK")
+    assert float(ds.latitude.min()) <= 8.0
+    assert float(ds.latitude.max()) >= 36.0
+    assert float(ds.longitude.min()) <= 70.0
+    assert float(ds.longitude.max()) >= 96.0
+    logger.info("  ✓ Spatial coverage OK (India)")
 
-    # Check data types
     for var in ds.data_vars:
-        assert ds[var].dtype == np.float32, \
-            f"{var} dtype should be float32, got {ds[var].dtype}"
-    logger.info(f"  ✓ Data types OK (float32)")
+        assert ds[var].dtype == np.float32
+    logger.info("  ✓ float32 types OK")
 
-    logger.info(f"  ✓ Validation passed")
+    logger.info("  ✓ Validation passed")
     return True
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Download NOAA GFS data for India → OCF-compatible Zarr"
+        description="Download NOAA GFS data for India → OCF Zarr"
     )
     parser.add_argument("--year", type=int, required=True)
     parser.add_argument("--months", type=int, nargs="+", required=True)
     parser.add_argument("--output-dir", type=str, default="data/gfs_india")
-    parser.add_argument("--max-days", type=int, default=None,
-                        help="Limit days per month (testing)")
-    parser.add_argument("--channels", type=str, nargs="+", default=None,
-                        help="Subset of channels to download")
+    parser.add_argument("--max-days", type=int, default=None)
+    parser.add_argument("--source", choices=["nomads", "herbie"], default="nomads",
+                        help="nomads=GRIB filter (fast, recent), "
+                             "herbie=S3 byte-range (historical)")
+    parser.add_argument("--workers", type=int, default=6,
+                        help="Parallel download workers")
+    parser.add_argument("--channels", type=str, nargs="+", default=None)
     parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--merge", action="store_true",
-                        help="Merge monthly Zarrs into yearly file")
-    parser.add_argument("--validate", type=str, default=None,
-                        help="Validate an existing Zarr file")
+    parser.add_argument("--merge", action="store_true")
+    parser.add_argument("--validate", type=str, default=None)
 
     args = parser.parse_args()
 
@@ -426,6 +591,8 @@ def main():
             month=month,
             output_dir=args.output_dir,
             max_days=args.max_days,
+            source=args.source,
+            workers=args.workers,
             channels=args.channels,
             dry_run=args.dry_run,
         )
