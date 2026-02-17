@@ -1,0 +1,89 @@
+general:
+  description: Configuration for Germany solar forecasting with GFS data
+  name: germany_gfs_config
+
+input_data:
+  gsp:
+    zarr_path: "./data/germany/generation/germany_pv_2021.zarr"
+    interval_start_minutes: -60
+    interval_end_minutes: 480
+    time_resolution_minutes: 30
+    dropout_timedeltas_minutes: []
+    dropout_fraction: 0.0
+    public: False
+
+  nwp:
+    gfs:
+      time_resolution_minutes: 180
+      interval_start_minutes: -180
+      interval_end_minutes: 540
+      dropout_fraction: 0.0
+      dropout_timedeltas_minutes: []
+      zarr_path: "./data/germany/gfs/zarr/germany_gfs_2021_01.zarr"
+      provider: "gfs"
+      image_size_pixels_height: 32
+      image_size_pixels_width: 40
+      public: False
+      channels:
+        - dlwrf
+        - dswrf
+        - hcc
+        - mcc
+        - lcc
+        - prate
+        - r
+        - t
+        - tcc
+        - u10
+        - u100
+        - v10
+        - v100
+        - vis
+      normalisation_constants:
+        dlwrf:
+          mean: 287.7809
+          std: 35.7133
+        dswrf:
+          mean: 22.2770
+          std: 37.8986
+        hcc:
+          mean: 39.0351
+          std: 40.4131
+        lcc:
+          mean: 81.1567
+          std: 31.2783
+        mcc:
+          mean: 43.8942
+          std: 41.4526
+        prate:
+          mean: 0.000017
+          std: 0.000049
+        r:
+          mean: 92.2116
+          std: 10.6941
+        t:
+          mean: 273.4538
+          std: 2.9723
+        tcc:
+          mean: 88.8634
+          std: 23.8125
+        u10:
+          mean: -1.0224
+          std: 3.2745
+        u100:
+          mean: -1.4574
+          std: 4.7261
+        v10:
+          mean: -1.3676
+          std: 2.3645
+        v100:
+          mean: -1.9655
+          std: 3.1743
+        vis:
+          mean: 12681.0664
+          std: 10842.4053
+
+  solar_position:
+    interval_start_minutes: -60
+    interval_end_minutes: 480
+    time_resolution_minutes: 30

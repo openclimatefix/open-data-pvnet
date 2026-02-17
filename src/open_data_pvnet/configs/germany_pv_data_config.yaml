@@ -1,0 +1,29 @@
+general:
+  name: "germany_pv_config"
+  description: "Configuration for Germany PV data from SMARD API"
+
+api:
+  base_url: "https://www.smard.de/app/chart_data"
+  filter_id: 4068
+  region: "DE"
+  resolution: "quarterhour"
+
+collection:
+  start_date: "2021-01-01"
+  end_date: "2021-12-31"
+  request_delay_seconds: 0.3
+
+processing:
+  time_resolution_minutes: 15
+  aggregate_to_minutes: 30
+  timezone: "UTC"
+
+metadata:
+  country: "Germany"
+  gsp_id: "DE"
+  latitude: 51.0
+  longitude: 10.0
+
+output:
+  format: "zarr"
+  csv_backup: true
