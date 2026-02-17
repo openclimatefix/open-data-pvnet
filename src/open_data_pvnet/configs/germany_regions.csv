@@ -1,0 +1,6 @@
+region_id,region_name,latitude_min,latitude_max,longitude_min,longitude_max,center_lat,center_lon
+DE,Germany,47.0,55.0,5.0,15.0,51.0,10.0
+DE_NORTH,Northern Germany,53.0,55.0,7.0,14.0,54.0,10.5
+DE_SOUTH,Southern Germany,47.0,50.0,7.0,13.0,48.5,10.0
+DE_EAST,Eastern Germany,50.5,53.0,12.0,15.0,51.75,13.5
+DE_WEST,Western Germany,49.0,52.0,5.0,8.0,50.5,6.5

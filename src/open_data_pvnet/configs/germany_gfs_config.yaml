@@ -1,0 +1,41 @@
+general:
+  name: "germany_gfs_config"
+  description: "Configuration for Germany GFS data"
+
+geographic_bounds:
+  latitude_min: 47.0
+  latitude_max: 55.0
+  longitude_min: 5.0
+  longitude_max: 15.0
+
+data_source:
+  base_url: "https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod"
+  resolution: "0p25"
+  forecast_hours: [0, 3, 6, 9, 12, 15, 18]
+
+variables:
+  - dlwrf
+  - dswrf
+  - hcc
+  - mcc
+  - lcc
+  - prate
+  - r
+  - t
+  - tcc
+  - u10
+  - u100
+  - v10
+  - v100
+  - vis
+
+download:
+  retry_attempts: 3
+  retry_delay_seconds: 5
+  timeout_seconds: 300
+
+output:
+  format: "zarr"
+  chunk_time: 10
+  chunk_lat: 32
+  chunk_lon: 40
