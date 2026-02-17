@@ -77,8 +77,52 @@ Generation data represents the actual solar PV power output for your target coun
    - **United States**: 
      - EIA (Energy Information Administration) - National level data
      - Regional ISOs: CAISO (California), ERCOT (Texas), PJM (Eastern US)
+     - **Use the built-in EIA preprocessing script** (see below)
    - **United Kingdom**: PVlive API (already implemented in this project)
    - Check national grid operators and government energy data portals
+
+#### United States - EIA Data Preprocessing
+
+For the United States, use the built-in EIA preprocessing script to fetch and transform solar generation data:
+
+```bash
+# Set your EIA API key (get one free at https://www.eia.gov/opendata/)
+export EIA_API_KEY="your_api_key_here"
+
+# Fetch and preprocess EIA solar data for specific regions
+python -m open_data_pvnet.scripts.preprocess_eia_data \
+  --start-date 2023-01-01 \
+  --end-date 2023-12-31 \
+  --regions CAISO ERCOT PJM \
+  --output ./data/us/generation/2023.zarr \
+  --frequency hourly
+
+# Or fetch US48 aggregate data (default)
+python -m open_data_pvnet.scripts.preprocess_eia_data \
+  --start-date 2023-01-01 \
+  --end-date 2023-12-31 \
+  --output ./data/us/generation/2023.zarr
+```
+
+**Available Regions:**
+- `US48` - Continental United States (aggregate)
+- `CAISO` - California ISO
+- `ERCOT` - Texas
+- `PJM` - Mid-Atlantic
+- `MISO` - Midwest ISO
+- `NYISO` - New York ISO
+- `ISONE` - New England ISO
+- `SPP` - Southwest Power Pool
+
+**What the script does:**
+1. Fetches hourly solar generation data from EIA API
+2. Transforms to ocf-data-sampler schema (dimensions: `time_utc`, `location_id`)
+3. Estimates capacity from historical 99th percentile values
+4. Adds location metadata (latitude, longitude)
+5. Saves to Zarr format
+
+> [!TIP]
+> The preprocessing script automatically estimates `capacity_mwp` using the 99th percentile of historical generation values. This avoids outliers while capturing peak generation capacity.
 
 3. **Manual Data Collection**
    - Download from national energy/grid operator websites
