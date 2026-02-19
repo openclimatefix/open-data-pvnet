@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import MagicMock
 from datetime import datetime
 import pytz
-from open_data_pvnet.scripts.fetch_pvlive_data import PVLiveData
+from scripts.generation.fetch_pvlive_data import PVLiveData
 
 
 @pytest.fixture
