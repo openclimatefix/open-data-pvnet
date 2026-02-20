@@ -1,0 +1,13 @@
+location_id,region,principal_municipality,latitude,longitude
+0,"Auvergne-Rhône-Alpes","Lyon",45.7640,4.8357
+1,"Bourgogne-Franche-Comté","Dijon",47.3220,5.0415
+2,"Bretagne","Rennes",48.1173,-1.6778
+3,"Centre-Val-de-Loire","Orléans",47.9030,1.9093
+4,"Grand-Est","Strasbourg",48.5734,7.7521
+5,"Hauts-de-France","Lille",50.6292,3.0573
+6,"Ile-de-France","Paris",48.8566,2.3522
+7,"Normandie","Rouen",49.4432,1.0993
+8,"Nouvelle-Aquitaine","Bordeaux",44.8378,-0.5792
+9,"Occitanie","Toulouse",43.6047,1.4442
+10,"Pays-de-la-Loire","Nantes",47.2184,-1.5536
+11,"PACA","Marseille",43.2965,5.3698
