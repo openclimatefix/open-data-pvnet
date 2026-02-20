@@ -1,9 +1,50 @@
+"""
+Process France RTE Solar Generation Data
+
+This script processes CSV files from RTE's éCO2mix platform and creates an xarray Dataset 
+in Zarr format compatible with OCF data-sampler for PVNet training.
+
+Features:
+- Processes regional solar generation data for 12 French administrative regions
+- Handles timezone conversions (Europe/Paris → UTC)
+- Manages DST transitions (drops nonexistent times, keeps first occurrence for ambiguous)
+- Fills missing 30-minute timesteps
+- Creates multi-region xarray Dataset with coordinates from metadata CSV
+
+Input:
+- CSV files: eCO2mix_RTE_{region}_Annuel_{year}.csv in tmp/ directory
+- Metadata: admin_region_lat_lon.csv with region coordinates
+
+Output:
+- Zarr dataset with dimensions (location_id, time_utc)
+- Variables: generation_mw, capacity_mwp
+- Coordinates: location_id, time_utc, latitude, longitude
+
+Usage:
+    # Process all years (2020-2024) for all regions
+    python process_france_data.py
+    
+    # Process specific years
+    python process_france_data.py --start_yr 2022 --end_yr 2023
+    
+    # Custom output location
+    python process_france_data.py --output france_solar_2020_2024.zarr
+    
+    # Custom data directory
+    python process_france_data.py --generation-data-dir /path/to/csvs
+
+Requirements:
+    pip install pandas xarray numpy zarr
+"""
+
 import pandas as pd
 import xarray as xr
 import os
+import sys
 import logging
 import numpy as np
 import argparse
+from pathlib import Path
 
 # Configure logging
 logging.basicConfig(
@@ -13,13 +54,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-base_dir = os.getcwd()
-metadata_file_dir = os.path.join(os.path.dirname(base_dir), "configs")
-parent_3_levels_up = os.path.dirname(os.path.dirname(os.path.dirname(base_dir)))
-generation_data_dir = os.path.join(parent_3_levels_up, "tmp")
-output_dir = os.path.join(parent_3_levels_up, "data")
-start_yr = 2020
-end_yr = 2024
+# Get paths relative to this script's location
+script_dir = os.path.dirname(os.path.abspath(__file__))  # .../scripts/fra/
+workspace_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(script_dir))))  # 4 levels up
+metadata_file_dir = os.path.join(workspace_root, "src", "open_data_pvnet", "configs")
+generation_data_dir = os.path.join(workspace_root, "tmp")
+output_dir = os.path.join(workspace_root, "data", "fra")
 
 
 def process_location_csv(generation_data_dir, region, year) -> pd.DataFrame:
@@ -82,7 +122,7 @@ def process_location_csv(generation_data_dir, region, year) -> pd.DataFrame:
     # Ensure all 30-minute timesteps are present
     df = df.set_index("datetime")
     full_range = pd.date_range(start=df.index.min(), end=df.index.max(), freq="30min")
-    missing_timestamps = full_range.difference(df.index)
+    missing_timestamps = full_range.difference(pd.DatetimeIndex(df.index))
 
     if len(missing_timestamps) > 0:
         logger.warning(f"Found {len(missing_timestamps)} missing 30-minute timesteps:")
@@ -135,6 +175,10 @@ def create_France_aggregate(generation_data_dir, region_list, year_list) -> pd.D
                 france_df = pd.concat([france_df, df], ignore_index=True)
 
     # Now we have a DataFrame with all regions and years. We can create an aggregate by summing generation and capacity across regions for each timestamp.
+    if france_df is None:
+        logger.error("No data was processed. france_df is None.")
+        return pd.DataFrame()
+    
     france_aggregate = (
         france_df.groupby("datetime")
         .agg({"generation_mw": "sum", "capacity_mwp": "sum"})
@@ -315,21 +359,13 @@ if __name__ == "__main__":
     else:
         generation_data_dir = args.generation_data_dir
 
-    # Define regions and years
-    admin_region_list = [
-        "Auvergne-Rhône-Alpes",
-        "Bourgogne-Franche-Comté",
-        "Bretagne",
-        "Centre-Val-de-Loire",
-        "Grand-Est",
-        "Hauts-de-France",
-        "Ile-de-France",
-        "Normandie",
-        "Nouvelle-Aquitaine",
-        "Occitanie",
-        "Pays-de-la-Loire",
-        "PACA",
-    ]
+    # Load admin regions from CSV
+    try:
+        metadata_df = pd.read_csv(args.metadata_file)
+        admin_region_list = metadata_df["region"].tolist()
+    except FileNotFoundError:
+        logger.error(f"Metadata file not found: {args.metadata_file}")
+        sys.exit(1)
 
     year_list = list(range(args.start_yr, args.end_yr + 1))
 
@@ -343,7 +379,7 @@ if __name__ == "__main__":
 
     # Save to Zarr
     output_file = os.path.join(output_dir, args.output)
-    ds.to_zarr(output_file, mode="w")
+    ds.to_zarr(Path(output_file), mode="w")  # type: ignore[arg-type]
     logger.info(f"Saved dataset to {output_file}")
 
     # Display info

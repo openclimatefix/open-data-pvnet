@@ -10,7 +10,7 @@ RTE éCO2mix Dataset: https://www.rte-france.com/en/data-publications/eco2mix/do
     - Capacity (TCH) data available from Jan 2020
 
 Usage:
-    python get_generation_csv.py --start_yr 2019 --end_yr 2023 --consolidate_yr 2024
+    python get_generation_csv.py --start_yr 2020 --end_yr 2023 --consolidate_yr 2024
     # where users need to determine the consolidate year for assignment of a year in the file name
     # based on the latest available data on RTE. This way filenames will be consistent with the year of data they contain.
 """
@@ -18,6 +18,7 @@ Usage:
 import requests
 import pandas as pd
 import os
+import sys
 from time import sleep
 import zipfile
 import argparse
@@ -31,24 +32,20 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-base_dir = os.getcwd()
-parent_3_levels_up = os.path.dirname(os.path.dirname(os.path.dirname(base_dir)))
-output_dir = os.path.join(parent_3_levels_up, "tmp")
+# Get paths relative to this script's location
+script_dir = os.path.dirname(os.path.abspath(__file__))  # .../scripts/fra/
+workspace_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(script_dir))))  # 4 levels up
+metadata_file_dir = os.path.join(workspace_root, "src", "open_data_pvnet", "configs")
+output_dir = os.path.join(workspace_root, "tmp")
 
-admin_region_list = [
-    "Auvergne-Rhône-Alpes",
-    "Bourgogne-Franche-Comté",
-    "Bretagne",
-    "Centre-Val-de-Loire",
-    "Grand-Est",
-    "Hauts-de-France",
-    "Ile-de-France",
-    "Normandie",
-    "Nouvelle-Aquitaine",
-    "Occitanie",
-    "Pays-de-la-Loire",
-    "PACA",
-]
+# Load admin regions from CSV
+# try catching metadata file not found error and log it
+try:
+    metadata_df = pd.read_csv(os.path.join(metadata_file_dir, "admin_region_lat_lon.csv"))
+    admin_region_list = metadata_df["region"].tolist()
+except FileNotFoundError:
+    logger.error(f"Metadata file not found: {os.path.join(metadata_file_dir, 'admin_region_lat_lon.csv')}")
+    sys.exit(1)
 
 
 def get_region_generation_csv(region, year, consolidated=False) -> None:

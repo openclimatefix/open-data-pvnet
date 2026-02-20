@@ -6,7 +6,6 @@ Validates:
 2. GFS NWP data for France is accessible from S3
 3. Data timestamps align for training
 """
-
 import xarray as xr
 import pandas as pd
 import numpy as np
@@ -25,19 +24,15 @@ logger = logging.getLogger(__name__)
 
 gfs_path = "s3://ocf-open-data-pvnet/data/gfs/v4/2024.zarr"
 
-
 # Load the zarr dataset
-base_dir = os.getcwd()
-parent_3_levels_up = os.path.dirname(os.path.dirname(os.path.dirname(base_dir)))
-output_dir = os.path.join(parent_3_levels_up, "data")
-solar_path = os.path.join(parent_3_levels_up, "data", "france_solar_combined.zarr")
-print(f"Loading {solar_path}...\n")
-gfs_path_local = os.path.join(
-    parent_3_levels_up, "data", "gfs_2023.zarr"
-)  # For testing local access if needed
+base_dir = os.path.dirname(os.path.abspath(__file__))  # .../scripts/fra/
+workspace_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(base_dir))))  # 4 levels up
+output_dir = os.path.join(workspace_root, "data")
+solar_path = os.path.join(workspace_root, "data", "france_solar_combined.zarr")
+gfs_path_local = os.path.join(workspace_root, "data", "fra","gfs_2023.zarr")  # For testing local access if needed
 
 # Define France latitude and longitude bounds
-MIN_LAT, MAX_LAT = 41.5, 51.5
+MIN_LAT, MAX_LAT = 42.0, 51.5
 MIN_LON, MAX_LON = -5.5, 9.0
 
 

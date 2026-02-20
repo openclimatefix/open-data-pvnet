@@ -1,0 +1,98 @@
+general:
+  name: "france_pv_config"
+  description: "Configuration for France PV generation data from RTÉ"
+
+input_data:
+  generation:
+    # Path to processed France solar Zarr
+    zarr_path: "./data/fra/france_pv_generation.zarr"
+    time_resolution_minutes: 30
+    start_date: "2020-01-01"
+    end_date: "2024-12-31"
+    timezone: "UTC"
+    public: True
+
+metadata:
+  country: "France"
+  gsp_id: "FR"
+  latitude: 46.6
+  longitude: 2.5
+
+output:
+  format: "zarr"
+  csv_backup: True
+
+# France administrative regions metadata
+# Coordinates represent principal municipality of each region
+regions:
+  - location_id: 0
+    name: "Auvergne-Rhône-Alpes"
+    principal_municipality: "Lyon"
+    latitude: 45.7640
+    longitude: 4.8357
+    
+  - location_id: 1
+    name: "Bourgogne-Franche-Comté"
+    principal_municipality: "Dijon"
+    latitude: 47.3220
+    longitude: 5.0415
+    
+  - location_id: 2
+    name: "Bretagne"
+    principal_municipality: "Rennes"
+    latitude: 48.1173
+    longitude: -1.6778
+    
+  - location_id: 3
+    name: "Centre-Val-de-Loire"
+    principal_municipality: "Orléans"
+    latitude: 47.9030
+    longitude: 1.9093
+    
+  - location_id: 4
+    name: "Grand-Est"
+    principal_municipality: "Strasbourg"
+    latitude: 48.5734
+    longitude: 7.7521
+    
+  - location_id: 5
+    name: "Hauts-de-France"
+    principal_municipality: "Lille"
+    latitude: 50.6292
+    longitude: 3.0573
+    
+  - location_id: 6
+    name: "Ile-de-France"
+    principal_municipality: "Paris"
+    latitude: 48.8566
+    longitude: 2.3522
+    
+  - location_id: 7
+    name: "Normandie"
+    principal_municipality: "Rouen"
+    latitude: 49.4432
+    longitude: 1.0993
+    
+  - location_id: 8
+    name: "Nouvelle-Aquitaine"
+    principal_municipality: "Bordeaux"
+    latitude: 44.8378
+    longitude: -0.5792
+    
+  - location_id: 9
+    name: "Occitanie"
+    principal_municipality: "Toulouse"
+    latitude: 43.6047
+    longitude: 1.4442
+    
+  - location_id: 10
+    name: "Pays-de-la-Loire"
+    principal_municipality: "Nantes"
+    latitude: 47.2184
+    longitude: -1.5536
+    
+  - location_id: 11
+    name: "PACA"
+    principal_municipality: "Marseille"
+    latitude: 43.2965
+    longitude: 5.3698
