@@ -107,12 +107,18 @@ def handle_load(provider: str, year: int, month: int, day: int, **kwargs):
     hour = kwargs.get("hour")
 
     # Base path for the data
-    base_path = Path("data") / str(year) / f"{month:02d}" / f"{day:02d}"
+    base_path = Path("data")
 
     try:
         if hour is not None:
             # Load specific hour
-            archive_path = base_path / f"{year}-{month:02d}-{day:02d}-{hour:02d}.zarr.zip"
+            archive_path = (
+                base_path
+                / str(year)
+                / f"{month:02d}"
+                / f"{day:02d}"
+                / f"{year}-{month:02d}-{day:02d}-{hour:02d}.zarr.zip"
+            )
             dataset = load_zarr_data(
                 archive_path,
                 chunks=chunks,
