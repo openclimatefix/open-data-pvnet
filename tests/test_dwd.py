@@ -27,10 +27,16 @@ def mock_config():
 def test_generate_variable_url():
     """Test the URL generation for DWD data."""
     url = generate_variable_url("T_2M", 2023, 1, 1, 0)
-    assert url == "https://opendata.dwd.de/weather/nwp/icon-eu/grib/00/t_2m/icon-eu_europe_regular-lat-lon_single-level_2023010100_*"
+    assert (
+        url
+        == "https://opendata.dwd.de/weather/nwp/icon-eu/grib/00/t_2m/icon-eu_europe_regular-lat-lon_single-level_2023010100_*"
+    )
 
     url = generate_variable_url("CLCT", 2023, 12, 31, 23)
-    assert url == "https://opendata.dwd.de/weather/nwp/icon-eu/grib/23/clct/icon-eu_europe_regular-lat-lon_single-level_2023123123_*"
+    assert (
+        url
+        == "https://opendata.dwd.de/weather/nwp/icon-eu/grib/23/clct/icon-eu_europe_regular-lat-lon_single-level_2023123123_*"
+    )
 
 
 def test_fetch_dwd_data_success(mocker, mock_config, tmp_path):
@@ -55,7 +61,7 @@ def test_fetch_dwd_data_success(mocker, mock_config, tmp_path):
 
     mock_get = mocker.patch("requests.get")
     mock_get.return_value.content = html_content
-    mock_get.return_value.text = html_content.decode('utf-8')
+    mock_get.return_value.text = html_content.decode("utf-8")
     mock_get.return_value.raise_for_status = Mock()
     mock_get.return_value.iter_content = lambda chunk_size: [b"mock grib data"]
 
@@ -101,10 +107,10 @@ def test_process_dwd_data_success(mocker, mock_config, tmp_path):
 
     # Mock xarray operations
     mock_ds = mocker.MagicMock()
-    mock_ds.data_vars = ["t2m"]
     mock_ds.rename.return_value = mock_ds
 
-    mock_open_dataset = mocker.patch("xarray.open_dataset", return_value=mock_ds)
+    # Use the mock in an assertion later
+    mocker.patch("xarray.open_dataset", return_value=mock_ds)
     mock_merge = mocker.patch("xarray.merge")
     mock_merged = mocker.MagicMock()
     mock_merged.to_zarr = mocker.MagicMock()
@@ -113,11 +119,14 @@ def test_process_dwd_data_success(mocker, mock_config, tmp_path):
     # Mock file operations
     mocker.patch("pathlib.Path.exists", return_value=False)
     mocker.patch("pathlib.Path.mkdir")
-    mocker.patch("pathlib.Path.glob", return_value=[
-        Path("T_2M_file.grib2"),
-        Path("CLCT_file.grib2"),
-        Path("ASWDIR_S_file.grib2")
-    ])
+    mocker.patch(
+        "pathlib.Path.glob",
+        return_value=[
+            Path("T_2M_file.grib2"),
+            Path("CLCT_file.grib2"),
+            Path("ASWDIR_S_file.grib2"),
+        ],
+    )
 
     # Call function
     process_dwd_data(2023, 1, 1, 0)
@@ -135,4 +144,4 @@ def test_process_dwd_data_no_files(mocker, mock_config):
     process_dwd_data(2023, 1, 1, 0)
 
     mock_fetch.assert_called_once_with(2023, 1, 1, 0)
-    # Should exit early if no files are downloaded 
+    # Should exit early if no files are downloaded
